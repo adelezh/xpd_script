@@ -97,16 +97,16 @@ def ct_motors_plan(det,exp_time, num=1, delay=0, md=None):
     plan = bpp.plan_mutator(plan, inner_shutter_control)
     yield from plan
 
-def lineplan(exp_time, xstart, xend, xpoints, motor=sample_y, md=None, dets=[sample_y]):
+def lineplan(exp_time, xstart, xend, xpoints, motor=sample_y, md=None, det=[]):
     '''
 
-    :param exp_time:
-    :param xstart:
-    :param xend:
-    :param xpoints:
-    :param motor:
-    :param md:
-    :param det:
+    :param exp_time: total exposure time (in sec)
+    :param xstart: start point
+    :param xend: end point
+    :param xpoints: number of points to measure
+    :param motor: motor to move sample
+    :param md: metadate
+    :param det: extra detector you want to record
     :return:
     '''
 
@@ -121,27 +121,27 @@ def lineplan(exp_time, xstart, xend, xpoints, motor=sample_y, md=None, dets=[sam
     _md.update(md or {})
 
     area_det = xpd_configuration['area_det']
-    dets = [area_det] + det
+    dets = [area_det, motor] + det
     plan = bp.scan(dets, motor, xstart, xend, xpoints, md=_md)
-    plan = bpp.subs_wrapper(plan, LiveTable(det))
+    plan = bpp.subs_wrapper(plan, LiveTable(dets[1:]))
     plan = bpp.plan_mutator(plan, inner_shutter_control)
     yield from plan
 
 
-def gridplan(exp_time, xstart, xstop, xpoints, ystart, ystop, ypoints, motorx=sample_x, motory=sample_y, md=None):
+def gridplan(exp_time, xstart, xstop, xpoints, ystart, ystop, ypoints, motorx=sample_x, motory=sample_y, md=None, det=[]):
     '''
 
-    :param exp_time:
-    :param xstart:
-    :param xstop:
-    :param xpoints:
-    :param ystart:
-    :param ystop:
-    :param ypoints:
-    :param motorx:
-    :param motory:
-    :param md:
-    :param det:
+    :param exp_time: total exposure time (in second)
+    :param xstart: (motorx (fast motor) start point
+    :param xstop: (motorx (fast motor) stop point
+    :param xpoints: (motorx (fast motor) number of points
+    :param ystart: (motory (slower motor) start point
+    :param ystop: (motory (slower motor) stop point
+    :param ypoints: (motory (slower motor) number of points
+    :param motorx: fast motor to move sample
+    :param motory: slower motor to move sample
+    :param md: metadata
+    :param det: extra detector you want to record
     :return:
     '''
     (num_frame, acq_time, computed_exposure) = yield from _configure_area_det(exp_time)
@@ -155,7 +155,7 @@ def gridplan(exp_time, xstart, xstop, xpoints, ystart, ystop, ypoints, motorx=sa
     _md.update(md or {})
     det = [motory, motorx]+det
     area_det = xpd_configuration['area_det']
-    dets = [area_det]
+    dets = [area_det] + det
 
     plan = bp.grid_scan(dets, motory, ystart, ystop, ypoints, motorx, xstart, xstop, xpoints, True, md=_md)
     plan = bpp.subs_wrapper(plan, LiveTable(det))
@@ -165,14 +165,15 @@ def gridplan(exp_time, xstart, xstop, xpoints, ystart, ystop, ypoints, motorx=sa
 
 def xyposplan(exp_time, posxlist, posylist, motorx=sample_x, motory=sample_y, md=None):
     '''
+    example: measure three points at position (10, 1.2), (13, 1.3), (20, 1.4)
+    xyposplan(5, [10, 13, 20], [1.2, 1.3, 1.4])
 
-    :param area_det:
-    :param exp_time:
-    :param posxlist:
-    :param posylist:
-    :param motorx:
-    :param motory:
-    :param md:
+    :param exp_time: total exposure time (in seconds)
+    :param posxlist: list of xpositions
+    :param posylist: list of y positions
+    :param motorx: motor to move sample in x direction, default is sample_x
+    :param motory: motor to move sample in y direction, default is sample_y
+    :param md: metadata
     :return:
     '''
     (num_frame, acq_time, computed_exposure) = yield from _configure_area_det(exp_time)

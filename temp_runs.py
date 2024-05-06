@@ -55,7 +55,6 @@ def xpd_temp_ramp(smpl, Tstart, Tstop, Tstep, exp_time, delay=1, num=1, delay_nu
     temp_list=np.linspace(Tstart,Tstop,Tnum)
     if delay_num != 0:
         delay_num=delay_num+exp_time
-
     for Temp in temp_list:
         print('temperature moving to' + str(Temp))
         T_controller.move(Temp)
@@ -69,7 +68,10 @@ def xpd_temp_ramp(smpl, Tstart, Tstop, Tstep, exp_time, delay=1, num=1, delay_nu
 
 def mtemp_ramp(sample_list, pos_list, Tstart, Tstop, Tstep, exp_time, delay=1, num=1, delay_num=0, smpl_h=[],
            flt_h=None, flt_l=None, motor=sample_x, dets =[]):
+    '''
 
+
+    '''
     length = len(sample_list)
     print('Total sample numbers:', length)
 

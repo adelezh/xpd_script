@@ -152,11 +152,12 @@ def xpd_batteryxy(smpl_list, posx_list, posy_list, scanplan, cycle=1, delay=0, m
 
 def linescan(smpl, exp_time, xstart, xend, xpoints, motor=sample_y, md=None, dets=[sample_y]):
 
+
     plan = lineplan(exp_time, xstart, xend, xpoints, motor=motor, md=md, dets=dets)
     xrun(smpl, plan)
 
 def mlinescan(smplist, poslist, lstart, lend, lpoints, pos_motor=sample_x, lmotor=sample_y,
-              flt_l=None, flt_h=None, det=[]):
+              delay=0, smpl_h=[], flt_l=None, flt_h=None, det=[]):
     dets = [pos_motor, lmotor]+det
     length = len(sample_list)
     print('Total sample numbers:',length)
@@ -170,7 +171,7 @@ def mlinescan(smplist, poslist, lstart, lend, lpoints, pos_motor=sample_x, lmoto
                 if flt_l != None:
                     xpd_flt_set(flt_l)
             time.sleep(delay)
-            plan = lineplan(exp_time, lstart, lend, lpoints, motor=motor, md=md, dets=dets)
+            plan = lineplan(exp_time, lstart, lend, lpoints, motor=lmotor, md=md, dets=dets)
             xrun(smpl, plan)
 
     else:
@@ -183,10 +184,9 @@ def gridscan(smpl, exp_time, xstart, xstop, xpoints, ystart, ystop, ypoints, mot
     xrun(smpl, plan)
 
 
-def mgridscan(smplist, exp_time, xcenter_list, xrange, xpoints, ycenter_list,yrange, ypoints,
-              motorx=sample_x, motory=sample_y,flt_l=None, flt_h=None, det=[], md=None):
+def mgridscan(smplist, exp_time, xcenter_list, xrange, xpoints, ycenter_list,yrange, ypoints, delay=0,
+              motorx=sample_x, motory=sample_y,smpl_h=[], flt_l=None, flt_h=None,  md=None):
 
-    dets = [motorx, motory]+det
     length = len(smplist)
     if all(len(lst)==length for lst in [smplist, xcenter_list, ycenter_list]):
         for smpl, xcenter, ycenter in zip(smplist, xcenter_list, ycenter_list):
@@ -197,7 +197,18 @@ def mgridscan(smplist, exp_time, xcenter_list, xrange, xpoints, ycenter_list,yra
             xstop = xcenter + xrange/2
             ystart = ycenter -yrange/2
             ystop = ycenter-yrange/2
+            if sample in smpl_h:
+                xpd_flt_set(flt_h)
+            else:
+                if flt_l != None:
+                    xpd_flt_set(flt_l)
+            time.sleep(delay)
             plan = gridplan(exp_time, xstart, xstop, xpoints, ystart, ystop, ypoints, motorx=motorx, motory=motory,
                             md=md)
             xrun(smpl, plan)
+
+def xyposscan(smpl, exp_time, posxlist, posylist, motorx=sample_x, motory=sample_y, md=None ):
+
+    plan = xyposplan(exp_time, posxlist, posylist, motorx=motorx, motory=motory, md=md)
+    xrun(smpl, plan)
 

@@ -200,14 +200,27 @@ def set_pdf(pdf_pos=[0, 240], safe_out=280):
     glbl['frame_acq_time'] = 0.2
 
 
-def run_xrd(smpl, exp_xrd, num=1, xrd_pos=[400, 275], calib_file='config_base/xrd.poni', dets=[]):
-
+def run_xrd(smpl, exp_xrd, num=1, xrd_pos=[400, 280], calib_file='config_base/xrd.poni', frame_acq_time = 0.2, dets=[]):
+    '''
+    run one xrd measurement : move out PE1 detector,
+                            xpd_configure['area_det'] = pe2c
+                            glbl['frame_acq_time'] = 0.2
+    :param smpl: sample index
+    :param exp_xrd: total exposure time(in seconds)
+    :param xrd_pos:  PE1 position for xrd measurement
+    :param calib_file: calibration file for xrd measurement
+    :param frame_acq_time: frame acq time, default=0.2
+    :param dets: extra dets want to read in meta and table, such as temperature controller, motor positions
+    :return:
+    '''
     xrd_pe1x, xrd_pe1z = xrd_pos
     glbl["auto_load_calib"] = False
     pe1_z.move(xrd_pe1z)
     pe1_x.move(xrd_pe1x)
     xrd_calib = load_calibration_md(calib_file)
     xpd_configuration['area_det'] = pe2c
+    glbl['frame_acq_time'] = frame_acq_time
+    time.sleep(1)
     plan = plan_with_calib([pe2c] + dets, exp_xrd, num, xrd_calib)
     xrun(smpl, plan)
 
@@ -215,6 +228,19 @@ def run_xrd(smpl, exp_xrd, num=1, xrd_pos=[400, 275], calib_file='config_base/xr
 
 
 def run_pdf(smpl, exp_pdf, num=1, pdf_pos=[0, 240], safe_out=275, calib_file='config_base/pdf.poni', dets=[pe1_z]):
+    '''
+    run one pdf measurement : move PE1 detector in position,
+                            xpd_configure['area_det'] = pe1c
+                            glbl['frame_acq_time'] = 0.2
+    :param smpl: sample index
+    :param exp_xrd: total exposure time(in seconds)
+    :param pdf_pos:  PE1 position for PDF measurement
+    :param safe_out: pe1_z position to safely move PE1 in position
+    :param calib_file: calibration file for xrd measurement
+    :param frame_acq_time: frame acq time, default=0.2
+    :param dets: extra dets want to read in meta and table, such as temperature controller, motor positions
+    :return:
+    '''
     pdf_pe1x, pdf_pe1z = pdf_pos
     glbl["auto_load_calib"] = False
     pe1_z.move(safe_out)
