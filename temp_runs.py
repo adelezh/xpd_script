@@ -1,3 +1,6 @@
+import time
+
+
 def xpd_temp_list(smpl, Temp_list, exp_time, delay=1, num=1, delay_num=0, dets=[]):
     '''
     example
@@ -65,6 +68,39 @@ def xpd_temp_ramp(smpl, Tstart, Tstop, Tstep, exp_time, delay=1, num=1, delay_nu
     save_tb_xlsx(smpl, starttime, endtime)
     return None
 
+def xpd_temp_setrun(sample, temp, exp_time, delay=1, dets = []):
+    '''
+    example:
+        xpd_temp_setrun(1, 500, 5, delay=1, dets=[euroterhm.power])
+        sample 1, set temperature is 500, continually taking data(exposure time= 5sec) until the set temperature is reached.
+        wait 1 sec between each data, record temperature and power(%) at the same time
+
+        parameters:
+        sample: sample index ID in sample list
+        temp: target temperature
+        exp_time : total exposure time of each data
+        delay: sleep time between each data
+        dets: list of motors, temperatures controllers, which will be recorded in table.
+    '''
+    T_controller = xpd_configuration["temp_controller"]
+    area_det = xpd_configuration['area_det']
+    det=[area_det, T_controller]+dets
+    starttime=time.time()
+    print("take one data with dark image before start to temperature")
+    glbl['dk_window'] = 0.1
+    plan = ct_motors_plan(det, exp_time)
+    xrun(sample, plan)
+    glbl['dk_window'] = 1000
+    print(f'set temperature to {temp}, start to collect data')
+    T_controller.set(Temp)
+    while abs(T_controller.get()-Temp) >= 1:
+        plan = ct_motors_plan(det, exp_time)
+        xrun(smpl, plan)
+        time.sleep(delay)
+    endtime = time.time()
+    save_tb_xlsx(smpl, starttime, endtime)
+    return None
+
 
 def mtemp_ramp(sample_list, pos_list, Tstart, Tstop, Tstep, exp_time, delay=1, num=1, delay_num=0, smpl_h=[],
            flt_h=None, flt_l=None, motor=sample_x, dets =[]):
@@ -112,3 +148,5 @@ def mtemp_list(sample_list, pos_list, templist, exp_time, delay=1, num=1, delay_
     else:
         print('sample list and pos_list Must have same length!')
         return None
+
+
