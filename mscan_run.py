@@ -28,10 +28,6 @@ import json
 from os import chmod
 from pandas.core.common import flatten
 
-def save_histroy():
-    %history -o -f history.txt
-
-
 def xpd_mscan(sample_list, pos_list, scanplan,  delay=0, smpl_h=[], flt_h=None, flt_l=None,motor=sample_x):
     '''
     xpd_mscan(sample_list, pos_list,  scanplan, delay=0, smpl_h=[1,4], flt_h=[1,0,0,0], flt_l=[0,0,0,0],motor=sample_x)
@@ -127,7 +123,7 @@ def xpd_battery(smpl_list, posx_list, scanplan, cycle=1, delay=0, motor=sample_x
         return None
 
 def xpd_batteryxy(smpl_list, posx_list, posy_list, scanplan, cycle=1, delay=0, motorx=sample_x, motory=sample_y):
-    '''
+    ''' battery cycler experiment for multiple cells, each cell has x and y positions
     xpd_batteryxy(smpl_list, posx_list, posy_list, scanplan, cycle=1, delay=0, motorx=sample_x, motory=sample_y)
 
     multi-battery cycling scan plan, parameters:

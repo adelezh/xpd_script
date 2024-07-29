@@ -1,5 +1,5 @@
 def mscan_2det(smplist_pdf, smplist_xrd, posxlist, exp_pdf, exp_xrd, smpl_h=[], delay=1,
-                 pdf_pos=[0, 240], xrd_pos=[400, 270], num_pdf=1, num_xrd=1, pdf_flt_h=None, pdf_flt=None, xrd_flt=None,
+                 pdf_pos=[0, 255], xrd_pos=[400, 275], num_pdf=1, num_xrd=1, pdf_flt_h=None, pdf_flt=None, xrd_flt=None,
                  motorx=sample_x, pdf_frame_acq=None, xrd_frame_acq=None, dets=[pe1_z, sample_x]):
     '''
     Multiple samples, do pdf and xrd for one sample, then move to the next sample
@@ -35,7 +35,6 @@ def mscan_2det(smplist_pdf, smplist_xrd, posxlist, exp_pdf, exp_xrd, smpl_h=[], 
             run_2det(smpl_pdf, smpl_xrd, exp_pdf, exp_xrd, pdf_pos=pdf_pos, xrd_pos=xrd_pos,
                  num_pdf=num_pdf, num_xrd=num_xrd, pdf_flt=pdf_flt, xrd_flt=xrd_flt, dets=dets,
                  pdf_frame_acq=pdf_frame_acq, xrd_frame_acq=xrd_frame_acq )
-
 
 def mrun_2det_batch(smplist_pdf, smplist_xrd, posxlist, exp_pdf, exp_xrd, smpl_h=[], delay=1,
                  pdf_pos=[0, 240], xrd_pos=[400, 270], num_pdf=1, num_xrd=1, pdf_flt_h=None, pdf_flt=None, xrd_flt=None,
@@ -110,7 +109,85 @@ def mrun_2det_batch(smplist_pdf, smplist_xrd, posxlist, exp_pdf, exp_xrd, smpl_h
     glbl["auto_load_calib"] = current_calib_status
 
 
-def run_2det(smpl_pdf, smpl_xrd, exp_pdf, exp_xrd, pdf_pos=[0, 210], xrd_pos=[400, 240], num_pdf=3, num_xrd=1,
+def mrun_2det_xypos_batch(smplist_pdf, smplist_xrd, posxlist_pdf, posylist_pdf, posxlist_xrd, posylist_xrd,  exp_pdf, exp_xrd,
+                    smpl_h=[], delay=1, pdf_pos=[0, 255], xrd_pos=[400, 275], num_pdf=1, num_xrd=1, pdf_flt_h=None,
+                    pdf_flt=None, xrd_flt=None, motorx=sample_x, motory=sample_y, pdf_frame_acq=None, xrd_frame_acq=None,
+                    dets=[pe1_z, sample_x]):
+    '''
+    Multiple samples, do pdf measurment for all sample first, then do xrd measuremnt
+    for samples has both x and y position list, some sample need xrd or pdf only
+    :param smplist_pdf: list of sample names for PDF measurement
+    :param smplist_xrd: list of sample names for XRD measurement
+    :param posxlist_pdf: list of x positions of each samples need pdf measurement
+    :param posylist_pdf: list of y positions of each samples need pdf measurement
+    :param posxlist_xrd: list of x positions of each samples need xrd measurement
+    :param posylist_xrd: list of y positions of each samples need xrd measurement
+    :param exp_pdf: total exposure time for PDF measurement, in sec.
+    :param exp_xrd: total exposure time for XRD measurement, in sec. make sure exp_pdf and exp_xrd are not the same.
+    :param smpl_h: list of high scattering samples which need special filters for PDF measurement
+    :param delay: delay time between each sample, PDF measurement only
+    :param pdf_pos: det1 position[pe1_x, pe1_z] for pdf
+    :param xrd_pos: det1 position[pe1_x, pe1_z] for xrd, make sure pe1_Z is safe for PE1 to move out
+    :param num_pdf: number of data to take for PDF measurement
+    :param num_xrd: number of data to take for XRD measurement
+    :param pdf_flt_h: filter set for high scattering PDF samples in smpl_h, default is None, No samples in smpl_h
+    :param pdf_flt: filter set for normal PDF samples, default is None, use current filter set.
+    :param xrd_flt: filter set for all XRD samples, default is None, use current filter set.
+    :param motorx: motor to move samples, default is sample_x
+    :param pdf_frame_acq: frame_acq_time for PE1 detector, default is none, use same current frame acq time for both det
+    :param xrd_frame_acq: frame_acq_time for PE2 detector,default is none, use same current frame acq time for both det
+    :param dets: list of motors, temperatures controllers, which will be recorded in table
+
+    '''
+
+    glbl["auto_load_calib"] = False
+    xrd_calib = load_calibration_md('config_base/xrd.poni')
+    pdf_calib = load_calibration_md('config_base/pdf.poni')
+
+    pdf_pe1x, pdf_pe1z = pdf_pos
+    xrd_pe1x, xrd_pe1z = xrd_pos
+
+    print('xrd scan')
+    xpd_configuration['area_det'] = pe2c
+    if xrd_frame_acq is not None:
+        glbl['frame_acq_time'] = xrd_frame_acq
+        time.sleep(5)
+    pe1_z.move(xrd_pe1z)
+    pe1_x.move(xrd_pe1x)
+    if xrd_flt is not None:
+        xpd_flt_set(xrd_flt)
+    for smpl_xrd, posx, posy in zip(smplist_xrd, posxlist_xrd, posylist_xrd):
+        print(f' PDF: sample: {smpl_xrd} ,position: {posx}')
+        motorx.move(posx)
+        motory.move(posy)
+        # time.sleep(delay)
+        plan = plan_with_calib([pe2c] + dets, exp_xrd, num_xrd, xrd_calib)
+        xrun(smpl_xrd, plan)
+    print('pdf scan')
+    xpd_configuration['area_det'] = pe1c
+    if pdf_frame_acq is not None:
+        glbl['frame_acq_time'] = pdf_frame_acq
+        time.sleep(5)
+    pe1_z.move(xrd_pe1z)
+    pe1_x.move(pdf_pe1x)
+    pe1_z.move(pdf_pe1z)
+    for smpl_pdf, posx, posy in zip(smplist_pdf, posxlist_pdf, posylist_pdf):
+        print(f' PDF: sample: {smpl_pdf} ,position: {posx}')
+        motorx.move(posx)
+        motory.move(posy)
+        if smpl_pdf in smpl_h:
+            xpd_flt_set(pdf_flt_h)
+        else:
+            if pdf_flt is not None:
+                xpd_flt_set(pdf_flt)
+        time.sleep(delay)
+        plan = plan_with_calib([pe1c] + dets, exp_pdf, num_pdf, pdf_calib)
+        xrun(smpl_pdf, plan)
+
+    glbl["auto_load_calib"] = True
+
+
+def run_2det(smpl_pdf, smpl_xrd, exp_pdf, exp_xrd, pdf_pos=[0, 255], xrd_pos=[400, 275], num_pdf=1, num_xrd=1,
              pdf_flt=None, xrd_flt=None, pdf_frame_acq=None, xrd_frame_acq=None, dets=[pe1_z]):
 
     '''
@@ -169,10 +246,10 @@ def run_2det(smpl_pdf, smpl_xrd, exp_pdf, exp_xrd, pdf_pos=[0, 210], xrd_pos=[40
 
 
 def set_xrd(xrd_pos=[400, 280]):
-    '''
-    set xpdacq for xrd measurement: move out PE1 detector,
-                            xpd_configure['area_det'] = pe2c
-                            glbl['frame_acq_time'] = 0.2
+    ''' set xpdacq for xrd measurement
+        move out PE1 detector,
+        xpd_configure['area_det'] = pe2c
+        glbl['frame_acq_time'] = 0.2
     :param xrd_pos: safe pos to move PE1 out
     :return:
     '''
@@ -183,7 +260,7 @@ def set_xrd(xrd_pos=[400, 280]):
     glbl['frame_acq_time'] = 0.2
 
 
-def set_pdf(pdf_pos=[0, 240], safe_out=280):
+def set_pdf(pdf_pos=[0, 255], safe_out=280):
     '''
     set xpdacq for xrd measurement: move PE1 detector in position,
                             xpd_configure['area_det'] = pe1c
@@ -227,7 +304,7 @@ def run_xrd(smpl, exp_xrd, num=1, xrd_pos=[400, 280], calib_file='config_base/xr
     glbl["auto_load_calib"] = True
 
 
-def run_pdf(smpl, exp_pdf, num=1, pdf_pos=[0, 240], safe_out=275, calib_file='config_base/pdf.poni', dets=[pe1_z]):
+def run_pdf(smpl, exp_pdf, num=1, pdf_pos=[0, 255], safe_out=280, calib_file='config_base/pdf.poni', dets=[pe1_z]):
     '''
     run one pdf measurement : move PE1 detector in position,
                             xpd_configure['area_det'] = pe1c
