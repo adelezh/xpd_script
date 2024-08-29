@@ -1,12 +1,12 @@
 def plan_with_calib(dets, exp_time, num, calib_file):
-    '''
+    """
 
     :param dets:
     :param exp_time:
     :param num:
     :param calib_file:
     :return:
-    '''
+    """
     motors = dets[1:]
     yield from _configure_area_det(exp_time)
     plan = count_with_calib(dets, num, calibration_md=calib_file)
@@ -64,8 +64,9 @@ def count_with_calib(detectors: list, num: int = 1, delay: float = None, *, cali
     # glbl["auto_load_calib"] = prev_state
     return sts
 
-def ct_motors_plan(det,exp_time, num=1, delay=0, md=None):
-    '''
+
+def ct_motors_plan(det, exp_time, num=1, delay=0, md=None):
+    """
 
     :param det:
     :param exp_time:
@@ -73,7 +74,7 @@ def ct_motors_plan(det,exp_time, num=1, delay=0, md=None):
     :param delay:
     :param md:
     :return:
-    '''
+    """
     '''
 
     to read temperature controller and motor position and show on LiveTable
@@ -84,21 +85,22 @@ def ct_motors_plan(det,exp_time, num=1, delay=0, md=None):
     (num_frame, acq_time, computed_exposure) = yield from _configure_area_det(exp_time)
     _md = {
 
-            "sp_time_per_frame": acq_time,
-            "sp_num_frames": num_frame,
-            "sp_requested_exposure": exp_time,
-            "sp_computed_exposure": computed_exposure,
+        "sp_time_per_frame": acq_time,
+        "sp_num_frames": num_frame,
+        "sp_requested_exposure": exp_time,
+        "sp_computed_exposure": computed_exposure,
     }
 
     _md.update(md or {})
-    motors=det[1:]
+    motors = det[1:]
     plan = bp.count(det, num, delay, md=_md)
     plan = bpp.subs_wrapper(plan, LiveTable(motors))
     plan = bpp.plan_mutator(plan, inner_shutter_control)
     yield from plan
 
-def lineplan(exp_time, xstart, xend, xpoints, motor=sample_y, md=None, det=[]):
-    '''
+
+def lineplan(exp_time, xstart, xend, xpoints, motor=sample_y, md=None, det=None):
+    """ plan for multiple points along one line
 
     :param exp_time: total exposure time (in sec)
     :param xstart: start point
@@ -108,8 +110,10 @@ def lineplan(exp_time, xstart, xend, xpoints, motor=sample_y, md=None, det=[]):
     :param md: metadate
     :param det: extra detector you want to record
     :return:
-    '''
+    """
 
+    if det is None:
+        det = []
     (num_frame, acq_time, computed_exposure) = yield from _configure_area_det(exp_time)
     _md = {
 
@@ -121,15 +125,17 @@ def lineplan(exp_time, xstart, xend, xpoints, motor=sample_y, md=None, det=[]):
     _md.update(md or {})
 
     area_det = xpd_configuration['area_det']
-    dets = [area_det, motor] + det
+    det = [motor] + det
+    dets = [area_det] + det
     plan = bp.scan(dets, motor, xstart, xend, xpoints, md=_md)
-    plan = bpp.subs_wrapper(plan, LiveTable(dets[1:]))
+    plan = bpp.subs_wrapper(plan, LiveTable(det))
     plan = bpp.plan_mutator(plan, inner_shutter_control)
     yield from plan
 
 
-def gridplan(exp_time, xstart, xstop, xpoints, ystart, ystop, ypoints, motorx=sample_x, motory=sample_y, md=None, det=[]):
-    '''
+def gridplan(exp_time, xstart, xstop, xpoints, ystart, ystop, ypoints, motorx=sample_x, motory=sample_y, md=None,
+             det=None):
+    """
 
     :param exp_time: total exposure time (in second)
     :param xstart: (motorx (fast motor) start point
@@ -143,7 +149,9 @@ def gridplan(exp_time, xstart, xstop, xpoints, ystart, ystop, ypoints, motorx=sa
     :param md: metadata
     :param det: extra detector you want to record
     :return:
-    '''
+    """
+    if det is None:
+        det = []
     (num_frame, acq_time, computed_exposure) = yield from _configure_area_det(exp_time)
     _md = {
 
@@ -153,7 +161,7 @@ def gridplan(exp_time, xstart, xstop, xpoints, ystart, ystop, ypoints, motorx=sa
         "sp_computed_exposure": computed_exposure,
     }
     _md.update(md or {})
-    det = [motory, motorx]+det
+    det = [motory, motorx] + det
     area_det = xpd_configuration['area_det']
     dets = [area_det] + det
 
@@ -163,8 +171,9 @@ def gridplan(exp_time, xstart, xstop, xpoints, ystart, ystop, ypoints, motorx=sa
     yield from plan
 
 
-def xyposplan(exp_time, posxlist, posylist, motorx=sample_x, motory=sample_y, md=None):
-    '''
+def xyposplan(exp_time, posxlist, posylist, motorx=sample_x, motory=sample_y, md=None, det=None):
+
+    """
     example: measure three points at position (10, 1.2), (13, 1.3), (20, 1.4)
     xyposplan(5, [10, 13, 20], [1.2, 1.3, 1.4])
 
@@ -175,7 +184,9 @@ def xyposplan(exp_time, posxlist, posylist, motorx=sample_x, motory=sample_y, md
     :param motory: motor to move sample in y direction, default is sample_y
     :param md: metadata
     :return:
-    '''
+    """
+    if det is None:
+        det = []
     (num_frame, acq_time, computed_exposure) = yield from _configure_area_det(exp_time)
     _md = {
 
@@ -186,15 +197,14 @@ def xyposplan(exp_time, posxlist, posylist, motorx=sample_x, motory=sample_y, md
     }
     _md.update(md or {})
     area_det = xpd_configuration['area_det']
-    plan = bp.list_scan([area_det], motorx, posxlist, motory, posylist, md=_md)
-    plan = bpp.subs_wrapper(plan, LiveTable([motorx, motory]))
+
+    plan = bp.list_scan([area_det]+det, motorx, posxlist, motory, posylist, md=_md)
+    plan = bpp.subs_wrapper(plan, LiveTable([motorx, motory]+det))
     plan = bpp.plan_mutator(plan, inner_shutter_control)
     yield from plan
 
 
-
-
-#------------------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------------------------------------------
 def save_tb_xlsx(sample_name, starttime, endtime, readable_time=False):
     data_dir = "./tiff_base/"
     if not readable_time:
@@ -221,25 +231,25 @@ def save_tb_xlsx(sample_name, starttime, endtime, readable_time=False):
     writer.save()
     return
 
-def save_position_to_sample_list(smpl_list, pos_list, filename):
 
-    #file_name='300001_sample.xlsx'
+def save_position_to_sample_list(smpl_list, pos_list, filename):
+    # file_name='300001_sample.xlsx'
 
     file_dir = './Import/'
-    ind_list=[x+1 for x in smpl_list]
-    pos_str=[str(x) for x in pos_list]
-    file_name=file_dir+filename
-    f_out=file_name
+    ind_list = [x + 1 for x in smpl_list]
+    pos_str = [str(x) for x in pos_list]
+    file_name = file_dir + filename
+    f_out = file_name
     f = pd.read_excel(file_name)
-    tags=pd.DataFrame(f, columns=['User supplied tags']).fillna(0)
-    tags=tags.values
-    for i,ind in enumerate(ind_list):
+    tags = pd.DataFrame(f, columns=['User supplied tags']).fillna(0)
+    tags = tags.values
+    for i, ind in enumerate(ind_list):
         if tags[ind][0] != 0:
-            tag_str= str(tags[ind][0])
-            tags[ind][0]=tag_str +',pos='+ str(pos_str[i])
+            tag_str = str(tags[ind][0])
+            tags[ind][0] = tag_str + ',pos=' + str(pos_str[i])
         else:
-            tags[ind][0]='pos='+ str(pos_str[i])
-    tags=list(flatten(tags))
+            tags[ind][0] = 'pos=' + str(pos_str[i])
+    tags = list(flatten(tags))
 
     new_f = pd.DataFrame({'User supplied tags': tags})
     f.update(new_f)
@@ -248,20 +258,21 @@ def save_position_to_sample_list(smpl_list, pos_list, filename):
     writer.save()
     return None
 
+
 def xpd_flt_set(flt_p):
-    if flt_p[0]==0:
+    if flt_p[0] == 0:
         fb.flt1.set('Out')
     else:
         fb.flt1.set('In')
-    if flt_p[1]==0:
+    if flt_p[1] == 0:
         fb.flt2.set('Out')
     else:
         fb.flt2.set('In')
-    if flt_p[2]==0:
+    if flt_p[2] == 0:
         fb.flt3.set('Out')
     else:
         fb.flt3.set('In')
-    if flt_p[3]==0:
+    if flt_p[3] == 0:
         fb.flt4.set('Out')
     else:
         fb.flt4.set('In')
@@ -272,23 +283,23 @@ def xpd_flt_set(flt_p):
 
 
 def xpd_flt_read():
-    flt_p=[0,0,0,0]
+    flt_p = [0, 0, 0, 0]
     if fb.flt1.get() == 'Out':
-        flt_p[0]=0
+        flt_p[0] = 0
     else:
-        flt_p[0]=1
+        flt_p[0] = 1
     if fb.flt2.get() == 'Out':
-        flt_p[1]=0
+        flt_p[1] = 0
     else:
-        flt_p[1]=1
+        flt_p[1] = 1
 
     if fb.flt3.get() == 'Out':
-        flt_p[2]=0
+        flt_p[2] = 0
     else:
-        flt_p[2]=1
+        flt_p[2] = 1
     if fb.flt4.get() == 'Out':
-        flt_p[3]=0
+        flt_p[3] = 0
     else:
-        flt_p[3]=1
+        flt_p[3] = 1
 
     return flt_p
