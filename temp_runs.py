@@ -75,7 +75,7 @@ def xpd_temp_ramp(smpl, Tstart, Tstop, Tstep, exp_time, delay=1, num=1, delay_nu
 def xpd_temp_setrun(sample, temp, exp_time, delay=1, hold_time=1, dets=[], cooltoRT=False):
     """
     example:
-        xpd_temp_setrun(1, 500, 5, delay=1, hold_num=2, dets=[euroterhm.power])
+        xpd_temp_setrun(1, 500, 5, delay=1, hold_time=1, dets=[euroterhm.power])
         sample 1, set temperature is 500, continuously taking data(exposure time= 5sec) until the set temperature is reached.
         wait 1 sec between each data, record temperature and power(%) at the same time
 
