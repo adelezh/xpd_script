@@ -98,7 +98,7 @@ def xpd_temp_setrun(smpl, temp, exp_time, delay=1, hold_time=1, dets=[], cooltoR
     glbl['dk_window'] = 1000
     print(f'set temperature to {temp}, start to collect data')
     T_controller.set(temp)
-    while abs(T_controller.get() - Temp) >= 1:
+    while abs(T_controller.get() - temp) >= 1:
         plan = ct_motors_plan(det, exp_time)
         xrun(smpl, plan)
         time.sleep(delay)
