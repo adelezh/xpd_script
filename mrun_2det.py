@@ -114,8 +114,9 @@ def mrun_2det_xypos_batch(smplist_pdf, smplist_xrd, posxlist_pdf, posylist_pdf, 
                     pdf_flt=None, xrd_flt=None, motorx=sample_x, motory=sample_y, pdf_frame_acq=None, xrd_frame_acq=None,
                     dets=[pe1_z, sample_x]):
     '''
-    Multiple samples, do pdf measurment for all sample first, then do xrd measuremnt
+    Multiple samples, do xrd measurment for all sample first, then do pdf measuremnt
     for samples has both x and y position list, some sample need xrd or pdf only
+    
     :param smplist_pdf: list of sample names for PDF measurement
     :param smplist_xrd: list of sample names for XRD measurement
     :param posxlist_pdf: list of x positions of each samples need pdf measurement

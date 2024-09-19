@@ -72,7 +72,7 @@ def xpd_temp_ramp(smpl, Tstart, Tstop, Tstep, exp_time, delay=1, num=1, delay_nu
     return None
 
 
-def xpd_temp_setrun(sample, temp, exp_time, delay=1, hold_time=1, dets=[], cooltoRT=False):
+def xpd_temp_setrun(smpl, temp, exp_time, delay=1, hold_time=1, dets=[], cooltoRT=False):
     """
     example:
         xpd_temp_setrun(1, 500, 5, delay=1, hold_time=1, dets=[euroterhm.power])
@@ -97,7 +97,7 @@ def xpd_temp_setrun(sample, temp, exp_time, delay=1, hold_time=1, dets=[], coolt
     xrun(sample, plan)
     glbl['dk_window'] = 1000
     print(f'set temperature to {temp}, start to collect data')
-    T_controller.set(Temp)
+    T_controller.set(temp)
     while abs(T_controller.get() - Temp) >= 1:
         plan = ct_motors_plan(det, exp_time)
         xrun(smpl, plan)

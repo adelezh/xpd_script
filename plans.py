@@ -11,7 +11,6 @@ def plan_with_calib(dets, exp_time, num, calib_file):
     yield from _configure_area_det(exp_time)
     plan = count_with_calib(dets, num, calibration_md=calib_file)
     plan = bpp.subs_wrapper(plan, LiveTable(motors))
-    # plan = bpp.plan_mutator(plan, inner_shutter_control)
     yield from plan
 
 
@@ -59,29 +58,25 @@ def count_with_calib(detectors: list, num: int = 1, delay: float = None, *, cali
         plan = bp.count(detectors, num, delay, md=md, per_shot=_per_shot)
         sts = yield from plan
     except Exception as error:
-        # glbl["auto_load_calib"] = prev_state
         raise error
-    # glbl["auto_load_calib"] = prev_state
     return sts
 
 
 def ct_motors_plan(det, exp_time, num=1, delay=0, md=None):
     """
 
-    :param det:
-    :param exp_time:
-    :param num:
-    :param delay:
-    :param md:
-    :return:
-    """
-    '''
+    :param det: list of detectors
+    :param exp_time: exposure time (in seconds)
+    :param num: number of data to take; default is 1
+    :param delay: time delay in seconds between successively readings, defautl is 0
+    :param md: metadata
 
     to read temperature controller and motor position and show on LiveTable
     then we can save table to excel file
 
     det=[area_det, T_controller, motor...]
-    '''
+    """
+
     (num_frame, acq_time, computed_exposure) = yield from _configure_area_det(exp_time)
     _md = {
 
@@ -205,6 +200,30 @@ def xyposplan(exp_time, posxlist, posylist, motorx=sample_x, motory=sample_y, md
 
 
 # ------------------------------------------------------------------------------------------------------------------------
+from packaging import version
+
+
+def append_compatible(df, new_data, sort=False):
+    """
+    Append new_data to df in a way that's compatible with different pandas versions.
+
+    Parameters:
+        df (DataFrame): The original DataFrame to append data to.
+        new_data (DataFrame): The new data to append to the original DataFrame.
+        sort (bool): Whether to sort columns or not (for pandas <= 1.4.x).
+
+    Returns:
+        DataFrame: The resulting DataFrame after appending new_data.
+    """
+    pandas_version = pd.__version__
+
+    if version.parse(pandas_version) >= version.parse("2.0.0"):
+        # For pandas >= 2.0.0
+        return df._append(new_data, sort=sort)
+    else:
+        # For pandas < 2.0.0
+        return df.append(new_data, sort=sort)
+
 def save_tb_xlsx(sample_name, starttime, endtime, readable_time=False):
     data_dir = "./tiff_base/"
     if not readable_time:
@@ -225,7 +244,8 @@ def save_tb_xlsx(sample_name, starttime, endtime, readable_time=False):
         if idx == 0:
             DBout = tb
         else:
-            DBout = DBout.append(tb, sort=False)
+            #DBout = DBout._append(tb, sort=False)
+            append_compatible(DBout, tb, sort=False)
     writer = pd.ExcelWriter(file_name)
     DBout.to_excel(writer, sheet_name='Sheet1')
     writer.save()
