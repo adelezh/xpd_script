@@ -198,7 +198,20 @@ def xyposplan(exp_time, posxlist, posylist, motorx=sample_x, motory=sample_y, md
     plan = bpp.plan_mutator(plan, inner_shutter_control)
     yield from plan
 
+def take_one_dark(sample, det, exp_time):
+    """ take one data with dark image, then set dark window to 1000 minutes
 
+    parameter:
+    sample: sample name(index) in sample list
+    det: list of detectors
+    exp_time: exposure time in seconds
+
+    """
+
+    glbl['dk_window'] = 0.1
+    plan = ct_motors_plan(det, exp_time)
+    xrun(sample, plan)
+    glbl['dk_window'] = 1000
 # ------------------------------------------------------------------------------------------------------------------------
 from packaging import version
 

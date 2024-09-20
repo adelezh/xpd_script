@@ -1,7 +1,7 @@
 import time
 
 
-def xpd_temp_list(smpl, Temp_list, exp_time, delay=1, num=1, delay_num=0, dets=[]):
+def xpd_temp_list(smpl, Temp_list, exp_time, delay=1, num=1, delay_num=0, dets=[], takeonedark=False):
     """
     example
         xpd_temp_list(1, [300, 350, 400], 5, delay=1, num=1, delay_num=0, dets=[euroterhm.power])
@@ -23,6 +23,9 @@ def xpd_temp_list(smpl, Temp_list, exp_time, delay=1, num=1, delay_num=0, dets=[
     area_det = xpd_configuration['area_det']
     det = [area_det, T_controller] + dets
     starttime = time.time()
+    if takeonedark is True:
+        take_one_dark(smpl, det, exp_time)
+        
     if num > 1:  # take more than one data
         delay_num1 = delay_num + exp_time
     for Temp in Temp_list:
@@ -36,7 +39,7 @@ def xpd_temp_list(smpl, Temp_list, exp_time, delay=1, num=1, delay_num=0, dets=[
     return None
 
 
-def xpd_temp_ramp(smpl, Tstart, Tstop, Tstep, exp_time, delay=1, num=1, delay_num=0, dets=[]):
+def xpd_temp_ramp(smpl, Tstart, Tstop, Tstep, exp_time, delay=1, num=1, delay_num=0, dets=[], takeonedark=False):
     """
     example:
         xpd_temp_ramp(1, 300, 400, 10, 5, delay=1, num=1, delay_num=0, dets=[euroterhm.power])
@@ -57,6 +60,9 @@ def xpd_temp_ramp(smpl, Tstart, Tstop, Tstep, exp_time, delay=1, num=1, delay_nu
     area_det = xpd_configuration['area_det']
     det = [area_det, T_controller] + dets
     starttime = time.time()
+    if takeonedark is True:
+        take_one_dark(smpl, det, exp_time)
+        
     Tnum = int(abs(Tstart - Tstop) / Tstep) + 1
     temp_list = np.linspace(Tstart, Tstop, Tnum)
     if num > 1:  # take more than one data
@@ -72,7 +78,7 @@ def xpd_temp_ramp(smpl, Tstart, Tstop, Tstep, exp_time, delay=1, num=1, delay_nu
     return None
 
 
-def xpd_temp_setrun(smpl, temp, exp_time, delay=1, hold_time=1, dets=[], cooltoRT=False):
+def xpd_temp_setrun(smpl, temp, exp_time, delay=1, hold_time=1, dets=[], cooltoRT=False, takeonedark=Flase):
     """
     example:
         xpd_temp_setrun(1, 500, 5, delay=1, hold_time=1, dets=[euroterhm.power])
@@ -91,11 +97,8 @@ def xpd_temp_setrun(smpl, temp, exp_time, delay=1, hold_time=1, dets=[], cooltoR
     area_det = xpd_configuration['area_det']
     det = [area_det, T_controller] + dets
     starttime = time.time()
-    print("take one data with dark image before start to temperature")
-    glbl['dk_window'] = 0.1
-    plan = ct_motors_plan(det, exp_time)
-    xrun(sample, plan)
-    glbl['dk_window'] = 1000
+    if takeonedark is True:
+        take_one_dark(smpl, det, exp_time)
     print(f'set temperature to {temp}, start to collect data')
     T_controller.set(temp)
     while abs(T_controller.get() - temp) >= 1:
@@ -124,7 +127,7 @@ def xpd_temp_setrun(smpl, temp, exp_time, delay=1, hold_time=1, dets=[], cooltoR
 
 
 def xpd_mtemp_ramp(sample_list, pos_list, Tstart, Tstop, Tstep, exp_time, delay=1, num=1, delay_num=0, smpl_h=[],
-                   flt_h=None, flt_l=None, motor=sample_x, dets=[]):
+                   flt_h=None, flt_l=None, motor=sample_x, dets=[], takeonedark=False):
     """
     example
         xpd_mtemp_ramp([1,2,3],[10, 20, 30],  300, 400, 10, 5, delay=1, num=1, delay_num=0, smpl_h=[1],
@@ -161,7 +164,8 @@ def xpd_mtemp_ramp(sample_list, pos_list, Tstart, Tstop, Tstep, exp_time, delay=
                 if flt_l != None:
                     xpd_flt_set(flt_l)
             time.sleep(1)
-            xpd_temp_ramp(sample, Tstart, Tstop, Tstep, exp_time, delay=delay, num=num, delay_num=delay_num, dets=dets)
+            xpd_temp_ramp(sample, Tstart, Tstop, Tstep, exp_time, delay=delay, num=num, 
+                          delay_num=delay_num, dets=dets,takeonedark=takeonedark)
 
     else:
         print('sample list and pos_list Must have same length!')
@@ -169,7 +173,7 @@ def xpd_mtemp_ramp(sample_list, pos_list, Tstart, Tstop, Tstep, exp_time, delay=
 
 
 def xpd_mtemp_list(sample_list, pos_list, templist, exp_time, delay=1, num=1, delay_num=0, smpl_h=[],
-                   flt_h=None, flt_l=None, motor=sample_x, dets=[]):
+                   flt_h=None, flt_l=None, motor=sample_x, dets=[], takeonedark=False):
     """
     example
         xpd_mtemp_list([1,2,3],[10, 20, 30],  [300, 350, 400], 5, delay=1, num=1, delay_num=0, smpl_h=[1],
@@ -208,7 +212,8 @@ def xpd_mtemp_list(sample_list, pos_list, templist, exp_time, delay=1, num=1, de
                 if flt_l != None:
                     xpd_flt_set(flt_l)
             time.sleep(1)
-            xpd_temp_list(sample, templist, exp_time, delay=delay, num=num, delay_num=delay_num, dets=dets)
+            xpd_temp_list(sample, templist, exp_time, delay=delay, num=num, 
+                          delay_num=delay_num, dets=dets, takeonedark=takeonedark)
 
     else:
         print('sample list and pos_list Must have same length!')
