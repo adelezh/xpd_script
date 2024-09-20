@@ -116,7 +116,7 @@ def mrun_2det_xypos_batch(smplist_pdf, smplist_xrd, posxlist_pdf, posylist_pdf, 
     '''
     Multiple samples, do xrd measurment for all sample first, then do pdf measuremnt
     for samples has both x and y position list, some sample need xrd or pdf only
-    
+
     :param smplist_pdf: list of sample names for PDF measurement
     :param smplist_xrd: list of sample names for XRD measurement
     :param posxlist_pdf: list of x positions of each samples need pdf measurement
@@ -190,34 +190,69 @@ def mrun_2det_xypos_batch(smplist_pdf, smplist_xrd, posxlist_pdf, posylist_pdf, 
 
 def run_2det(smpl_pdf, smpl_xrd, exp_pdf, exp_xrd, pdf_pos=[0, 255], xrd_pos=[400, 275], num_pdf=1, num_xrd=1,
              pdf_flt=None, xrd_flt=None, pdf_frame_acq=None, xrd_frame_acq=None, dets=[pe1_z]):
-
     '''
-    PDF and XRD measure for one sample.
+      Perform PDF and XRD measurements for one sample using two detectors.
 
-    :param smpl_pdf: sample name for pdf measurement
-    :param smpl_xrd: sample name for xrd measurement
-    :param exp_pdf: total exposure time for PDF measurement
-    :param exp_xrd: total exposure time for XRD measurement, in sec. make sure exp_pdf and exp_xrd are not the same.
-    :param pdf_pos: det1 position[pe1_x, pe1_z] for pdf
-    :param xrd_pos: det1 position[pe1_x, pe1_z] for xrd, make sure pe1_Z is safe for PE1 to move out
-    :param num_pdf: number of data to take for PDF measurement
-    :param num_xrd: number of data to take for XRD measurement
-    :param pdf_flt: filter set for PDF samples
-    :param xrd_flt: filter set for XRD samples
-    :param pdf_frame_acq: frame_acq_time for PE1 detector
-    :param xrd_frame_acq: frame_acq_time for PE2 detector
-    :param dets:
-    :return:
+      Parameters:
+      -----------
+      smpl_pdf : str
+          Sample name for the PDF measurement.
+
+      smpl_xrd : str
+          Sample name for the XRD measurement.
+
+      exp_pdf : float
+          Total exposure time for the PDF measurement in seconds.
+
+      exp_xrd : float
+          Total exposure time for the XRD measurement in seconds. Ensure `exp_pdf` and `exp_xrd` are not the same.
+
+      pdf_pos : list of int, optional, default=[0, 255]
+          Detector 1 [pe1_x, pe1_z] positions for the PDF measurement.
+
+      xrd_pos : list of int, optional, default=[400, 275]
+          Detector 1 [pe1_x, pe1_z] positions for the XRD measurement. Ensure `pe1_z` is safe for PE1 to move out.
+
+      num_pdf : int, optional, default=1
+          Number of data sets to collect for the PDF measurement.
+
+      num_xrd : int, optional, default=1
+          Number of data sets to collect for the XRD measurement.
+
+      pdf_flt : list, optional, default=None
+          Filter setting to apply for the PDF samples, if applicable.
+
+      xrd_flt : list, optional, default=None
+          Filter setting to apply for the XRD samples, if applicable.
+
+      pdf_frame_acq : float, optional, default=None
+          Frame acquisition time for the PE1 detector.
+
+      xrd_frame_acq : float, optional, default=None
+          Frame acquisition time for the PE2 detector.
+
+      dets : list, optional, default=[pe1_z]
+          List of additional detectors to be used during both the PDF and XRD measurements.
+
+      Returns:
+      --------
+      None
     '''
-
+    #Input Validation
+    if pdf_flt is not None and xrd_flt is None:
+        raise ValueError("If pdf_flt is provided, xrd_flt must be provided.")
+    
+    # Disable auto-loading calibration
     glbl["auto_load_calib"] = False
 
+    # Load calibration files for both PDF and XRD
     xrd_calib = load_calibration_md('config_base/xrd.poni')
     pdf_calib = load_calibration_md('config_base/pdf.poni')
 
     pdf_pe1x, pdf_pe1z = pdf_pos
     xrd_pe1x, xrd_pe1z = xrd_pos
 
+    #PDF Scan
     print('pdf scan')
     xpd_configuration['area_det'] = pe1c
     if pdf_frame_acq is not None:
@@ -227,10 +262,11 @@ def run_2det(smpl_pdf, smpl_xrd, exp_pdf, exp_xrd, pdf_pos=[0, 255], xrd_pos=[40
     pe1_x.move(pdf_pe1x)
     pe1_z.move(pdf_pe1z)
     if pdf_flt is not None:
-        xpd_flt_set(pdf_flt)
+        xpd_flt_set(pdf_flt)  # set filter for pdf if provided
     plan = plan_with_calib([pe1c] + dets, exp_pdf, num_pdf, pdf_calib)
     xrun(smpl_pdf, plan)
 
+    #XRD Scan
     print('xrd scan')
     xpd_configuration['area_det'] = pe2c
     if xrd_frame_acq is not None:
@@ -242,7 +278,7 @@ def run_2det(smpl_pdf, smpl_xrd, exp_pdf, exp_xrd, pdf_pos=[0, 255], xrd_pos=[40
         xpd_flt_set(xrd_flt)
     plan = plan_with_calib([pe2c] + dets, exp_xrd, num_xrd, xrd_calib)
     xrun(smpl_xrd, plan)
-
+    # Re-enable auto-loading calibration
     glbl["auto_load_calib"] = True
 
 

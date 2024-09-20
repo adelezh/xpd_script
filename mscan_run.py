@@ -213,12 +213,6 @@ def xpd_batteryxy(smpl_list, posx_list, posy_list, scanplan, cycle=1, delay=0, m
         motorx (object, optional): Motor object used to move the sample holder along the x-axis. Default is `sample_x`.
         motory (object, optional): Motor object used to move the sample holder along the y-axis. Default is `sample_y`.
 
-
-        smpl_list: list of all samples in the sample holder
-        posx_list, posy_list: list of sample x and y positions, smpl_list, posx_list, posy_list should be match
-        motorx, motory: motors which move sample holder, default is sample_x and sample_y
-        scanplan: scanplan index in xpdacq scanplan
-        delay: delay time in between each sample
     """
 
     # Input validation
