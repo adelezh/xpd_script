@@ -251,14 +251,17 @@ def save_tb_xlsx(sample_name, starttime, endtime, readable_time=False):
     file_name = data_dir + 'sample_' + str(sample_name) + '_' + timestring_filename + ".xlsx"
     print(len(list(hdrs)))
     for idx, hdr in enumerate(hdrs):
-        tb = hdr.table()
-        uid6 = hdr.start['uid'][0:6]
-        tb['uid6'] = uid6
-        if idx == 0:
-            DBout = tb
-        else:
-            #DBout = DBout._append(tb, sort=False)
-            append_compatible(DBout, tb, sort=False)
+        try:
+            tb = hdr.table()
+            uid6 = hdr.start['uid'][0:6]
+            tb['uid6'] = uid6
+            if idx == 0:
+                DBout = tb
+            else:
+                #DBout = DBout._append(tb, sort=False)
+                append_compatible(DBout, tb, sort=False)
+        except IndexError:
+            pass
     writer = pd.ExcelWriter(file_name)
     DBout.to_excel(writer, sheet_name='Sheet1')
     writer.save()
