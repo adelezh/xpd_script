@@ -1,13 +1,18 @@
 def plan_with_calib(dets, exp_time, num, calib_file):
+    """ plan for a scan with detectors and apply calibration from a file.
+
+    Args:
+        dets (list): List of detectors to be used during the scan.
+        exp_time (float): Exposure time (in seconds) for each reading.
+        num (int): Number of readings to take.
+        calib_file (str): Path to the calibration file.
+
+    Example:
+        plan_with_calib([pec1, det2], 5.0, 10, calib_file='xrd.poni')
     """
 
-    :param dets:
-    :param exp_time:
-    :param num:
-    :param calib_file:
-    :return:
-    """
     motors = dets[1:]
+    # Configure the area detector
     yield from _configure_area_det(exp_time)
     plan = count_with_calib(dets, num, calibration_md=calib_file)
     plan = bpp.subs_wrapper(plan, LiveTable(motors))
@@ -63,21 +68,24 @@ def count_with_calib(detectors: list, num: int = 1, delay: float = None, *, cali
 
 
 def ct_motors_plan(det, exp_time, num=1, delay=0, md=None):
+    """plan for performing multiple readings of detectors (e.g., temperature controller, motor positions) and display results
+    in real-time using LiveTable.
+
+    Parameters:
+        det (list): List of detectors to be read during the scan (e.g., area detector, temperature controller, motors).
+        exp_time (float): Exposure time (in seconds) for each reading.
+        num (int, optional): Number of readings to take. Default is 1.
+        delay (float, optional): Delay (in seconds) between successive readings. Default is 0.
+        md (dict, optional): Additional metadata to attach to the scan. Default is None.
+
+    Example:
+        ct_motors_plan([area_det, T_controller, motor], 5.0, num=10, delay=1)
+
     """
-
-    :param det: list of detectors
-    :param exp_time: exposure time (in seconds)
-    :param num: number of data to take; default is 1
-    :param delay: time delay in seconds between successively readings, defautl is 0
-    :param md: metadata
-
-    to read temperature controller and motor position and show on LiveTable
-    then we can save table to excel file
-
-    det=[area_det, T_controller, motor...]
-    """
-
+    # Configure the area detector
     (num_frame, acq_time, computed_exposure) = yield from _configure_area_det(exp_time)
+
+    # Metadata handling
     _md = {
 
         "sp_time_per_frame": acq_time,
@@ -87,6 +95,7 @@ def ct_motors_plan(det, exp_time, num=1, delay=0, md=None):
     }
 
     _md.update(md or {})
+
     motors = det[1:]
     plan = bp.count(det, num, delay, md=_md)
     plan = bpp.subs_wrapper(plan, LiveTable(motors))
@@ -95,21 +104,28 @@ def ct_motors_plan(det, exp_time, num=1, delay=0, md=None):
 
 
 def lineplan(exp_time, xstart, xend, xpoints, motor=sample_y, md=None, det=None):
-    """ plan for multiple points along one line
+    """ plan for 1D line scan by moving a motor between two positions and recording measurements at multiple points.
 
-    :param exp_time: total exposure time (in sec)
-    :param xstart: start point
-    :param xend: end point
-    :param xpoints: number of points to measure
-    :param motor: motor to move sample
-    :param md: metadate
-    :param det: extra detector you want to record
-    :return:
+    Parameters:
+        exp_time (float): Total exposure time (in seconds) for each measurement point.
+        xstart (float): Starting position for the motor.
+        xend (float): Ending position for the motor.
+        xpoints (int): Number of points to measure along the line.
+        motor (object, optional): Motor object to move the sample along the line. Default is `sample_y`.
+        md (dict, optional): Additional metadata to attach to the scan.
+        det (list, optional): List of extra detectors to record during the scan.
+
+    Example:
+        lineplan(5.0, 0, 10, 5, motor=sample_y)
+
     """
 
     if det is None:
         det = []
+    # Configure the area detector
     (num_frame, acq_time, computed_exposure) = yield from _configure_area_det(exp_time)
+
+    # Metadata handling
     _md = {
 
         "sp_time_per_frame": acq_time,
@@ -120,69 +136,85 @@ def lineplan(exp_time, xstart, xend, xpoints, motor=sample_y, md=None, det=None)
     _md.update(md or {})
 
     area_det = xpd_configuration['area_det']
-    det = [motor] + det
-    dets = [area_det] + det
-    plan = bp.scan(dets, motor, xstart, xend, xpoints, md=_md)
-    plan = bpp.subs_wrapper(plan, LiveTable(det))
+
+    plan = bp.scan([area_det] + det, motor, xstart, xend, xpoints, md=_md)
+    plan = bpp.subs_wrapper(plan, LiveTable([motor] + det))
     plan = bpp.plan_mutator(plan, inner_shutter_control)
     yield from plan
 
 
 def gridplan(exp_time, xstart, xstop, xpoints, ystart, ystop, ypoints, motorx=sample_x, motory=sample_y, md=None,
              det=None):
+
+    """ plan for 2D grid scan by moving two motors across specified ranges and collecting data using detectors.
+
+    Example:
+        gridplan(5.0, 0, 10, 5, 0, 10, 5)
+
+    Parameters:
+        exp_time (float): Total exposure time (in seconds) for each measurement point.
+        xstart (float): Starting position for the x-axis (motorx).
+        xstop (float): Ending position for the x-axis (motorx).
+        xpoints (int): Number of points to measure along the x-axis.
+        ystart (float): Starting position for the y-axis (motory).
+        ystop (float): Ending position for the y-axis (motory).
+        ypoints (int): Number of points to measure along the y-axis.
+        motorx (object, optional): Motor object to move the sample along the x-axis. Default is `sample_x`.
+        motory (object, optional): Motor object to move the sample along the y-axis. Default is `sample_y`.
+        md (dict, optional): Additional metadata to attach to the scan.
+        det (list, optional): List of extra detectors to record during the scan.
     """
 
-    :param exp_time: total exposure time (in second)
-    :param xstart: (motorx (fast motor) start point
-    :param xstop: (motorx (fast motor) stop point
-    :param xpoints: (motorx (fast motor) number of points
-    :param ystart: (motory (slower motor) start point
-    :param ystop: (motory (slower motor) stop point
-    :param ypoints: (motory (slower motor) number of points
-    :param motorx: fast motor to move sample
-    :param motory: slower motor to move sample
-    :param md: metadata
-    :param det: extra detector you want to record
-    :return:
-    """
     if det is None:
         det = []
-    (num_frame, acq_time, computed_exposure) = yield from _configure_area_det(exp_time)
-    _md = {
 
+    # Configure the ara detector
+    (num_frame, acq_time, computed_exposure) = yield from _configure_area_det(exp_time)
+
+    # Metadata
+    _md = {
         "sp_time_per_frame": acq_time,
         "sp_num_frames": num_frame,
         "sp_requested_exposure": exp_time,
         "sp_computed_exposure": computed_exposure,
     }
     _md.update(md or {})
-    det = [motory, motorx] + det
-    area_det = xpd_configuration['area_det']
-    dets = [area_det] + det
 
-    plan = bp.grid_scan(dets, motory, ystart, ystop, ypoints, motorx, xstart, xstop, xpoints, True, md=_md)
-    plan = bpp.subs_wrapper(plan, LiveTable(det))
+    area_det = xpd_configuration['area_det']
+
+    plan = bp.grid_scan([area_det]+det, motory, ystart, ystop, ypoints, motorx, xstart, xstop, xpoints, True, md=_md)
+    plan = bpp.subs_wrapper(plan, LiveTable([motorx, motory]+det))
     plan = bpp.plan_mutator(plan, inner_shutter_control)
     yield from plan
 
 
 def xyposplan(exp_time, posxlist, posylist, motorx=sample_x, motory=sample_y, md=None, det=None):
+    """ plan for a scan over a set of predefined x and y positions.
 
-    """
-    example: measure three points at position (10, 1.2), (13, 1.3), (20, 1.4)
-    xyposplan(5, [10, 13, 20], [1.2, 1.3, 1.4])
+    Parameters:
+        exp_time (float): Total exposure time (in seconds) for each measurement.
+        posxlist (list): List of x positions for the sample.
+        posylist (list): List of y positions for the sample.
+        motorx (object, optional): Motor object to move the sample along the x-axis. Default is `sample_x`.
+        motory (object, optional): Motor object to move the sample along the y-axis. Default is `sample_y`.
+        md (dict, optional): Additional metadata to attach to the scan.
+        det (list, optional): List of extra detectors to record during the scan.
 
-    :param exp_time: total exposure time (in seconds)
-    :param posxlist: list of xpositions
-    :param posylist: list of y positions
-    :param motorx: motor to move sample in x direction, default is sample_x
-    :param motory: motor to move sample in y direction, default is sample_y
-    :param md: metadata
-    :return:
-    """
+    Example:
+        plan = xyposplan(5, [10, 13, 20], [1.2, 1.3, 1.4])
+
+       """
+    # Input validation
+    if len(posxlist) != len(posylist):
+        raise ValueError("posxlist and posylist must have the same length")
+
     if det is None:
         det = []
+
+    # Configure detector
     (num_frame, acq_time, computed_exposure) = yield from _configure_area_det(exp_time)
+
+    # Metadata
     _md = {
 
         "sp_time_per_frame": acq_time,
@@ -202,12 +234,11 @@ def take_one_dark(sample, det, exp_time):
     """ take one data with dark image, then set dark window to 1000 minutes
 
     parameter:
-    sample: sample name(index) in sample list
-    det: list of detectors
-    exp_time: exposure time in seconds
+    sample (int): sample name(index) in sample list
+    det (list): list of detectors
+    exp_time (float): exposure time in seconds
 
     """
-
     glbl['dk_window'] = 0.1
     plan = ct_motors_plan(det, exp_time)
     xrun(sample, plan)
@@ -239,17 +270,21 @@ def append_compatible(df, new_data, sort=False):
 
 def save_tb_xlsx(sample_name, starttime, endtime, readable_time=False):
     data_dir = "./tiff_base/"
+
     if not readable_time:
         startstring = datetime.datetime.fromtimestamp(float(starttime)).strftime('%Y-%m-%d %H:%M:%S')
         endstring = datetime.datetime.fromtimestamp(float(endtime)).strftime('%Y-%m-%d %H:%M:%S')
     else:
         startstring = starttime
         endstring = endtime
+
     hdrs = db(since=startstring, until=endstring)
     timestamp = time.time()
     timestring_filename = datetime.datetime.fromtimestamp(float(timestamp)).strftime('%Y%m%d_%H%M%S')
     file_name = data_dir + 'sample_' + str(sample_name) + '_' + timestring_filename + ".xlsx"
     print(len(list(hdrs)))
+
+    DBout = None  # Initialize DBout
     for idx, hdr in enumerate(hdrs):
         try:
             tb = hdr.table()
@@ -258,40 +293,61 @@ def save_tb_xlsx(sample_name, starttime, endtime, readable_time=False):
             if idx == 0:
                 DBout = tb
             else:
-                #DBout = DBout._append(tb, sort=False)
+                # Use append_compatible to handle Pandas version differences
                 append_compatible(DBout, tb, sort=False)
         except IndexError:
             pass
-    writer = pd.ExcelWriter(file_name)
-    DBout.to_excel(writer, sheet_name='Sheet1')
-    writer.save()
-    return
+    with pd.ExcelWriter(file_name) as writer:
+        DBout.to_excel(writer, sheet_name='Sheet1')
 
 
 def save_position_to_sample_list(smpl_list, pos_list, filename):
+    """ Update the 'User supplied tags' column in the Excel file with positions from pos_list.
+
+    Parameters:
+        smpl_list (list): List of sample indices (0-based).
+        pos_list (list): List of positions to be added to the corresponding samples in 'User supplied tags'.
+        filename (str): Name of the Excel file to read and update.
+
+    Returns:
+        None
+    """
     # file_name='300001_sample.xlsx'
 
     file_dir = './Import/'
+    file_name = os.path.join(file_dir, filename)
+    if not os.path.isfile(file_name):
+        raise FileNotFoundError(f"The file '{file_name}' does not exist.")
+
     ind_list = [x + 1 for x in smpl_list]
     pos_str = [str(x) for x in pos_list]
-    file_name = file_dir + filename
     f_out = file_name
+
+    # Read the Excel file
     f = pd.read_excel(file_name)
-    tags = pd.DataFrame(f, columns=['User supplied tags']).fillna(0)
-    tags = tags.values
+    tags = pd.DataFrame(f, columns=['User supplied tags']).fillna(0).values
+
+    # Update the tags with the positions from pos_list
     for i, ind in enumerate(ind_list):
-        if tags[ind][0] != 0:
-            tag_str = str(tags[ind][0])
-            tags[ind][0] = tag_str + ',pos=' + str(pos_str[i])
-        else:
-            tags[ind][0] = 'pos=' + str(pos_str[i])
+        if ind < len(tags):
+            if tags[ind][0] != 0:
+                tag_str = str(tags[ind][0])
+                tags[ind][0] = tag_str + ',pos=' + str(pos_str[i])
+            else:
+                tags[ind][0] = 'pos=' + str(pos_str[i])
+    
+    #Flatten the updated tags
     tags = list(flatten(tags))
 
+    # Create a new DataFrame with the updated tags
     new_f = pd.DataFrame({'User supplied tags': tags})
+    
+    # Update the original DataFrame with the new tags
     f.update(new_f)
-    writer = pd.ExcelWriter(f_out)
-    f.to_excel(writer, index=False)
-    writer.save()
+
+    with pd.ExcelWriter(f_out) as writer:
+        f.to_excel(writer, index=False)
+
     return None
 
 
