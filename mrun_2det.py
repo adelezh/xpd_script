@@ -39,11 +39,12 @@ def mscan_2det(smplist_pdf, smplist_xrd, posxlist, exp_pdf, exp_xrd, smpl_h=None
     if pdf_flt is not None and xrd_flt is None:
         raise ValueError("If pdf_flt is provided, both xrd_flt must also be provided.")
 
-    # Ask the user to double-check the pdf_pos and xrd_pos values
+    # Ask the user confirm detector positions
     confirmation = input(
-        f"Double-check the detector positions: "
-        f"PDF Position = {pdf_pos}, "
-        f"XRD Position = {xrd_pos} (y/n): ").strip().lower()
+        f"Confirm detector positions:\n"
+        f"  - PDF Position = {pdf_pos}\n"
+        f"  - XRD Position = {xrd_pos}\n"
+        f"Proceed with these settings? (y/n): ").strip().lower()
 
     if confirmation not in ['y', 'yes']:
         print("User chose not to proceed with the measurements.")
@@ -117,11 +118,12 @@ def mrun_2det_batch(smplist_pdf, smplist_xrd, posxlist, exp_pdf, exp_xrd, smpl_h
     if pdf_flt is not None and xrd_flt is None:
         raise ValueError("If pdf_flt is provided, both xrd_flt must also be provided.")
 
-    # Ask the user to double-check the pdf_pos and xrd_pos values
+    # Ask the user to confirm detector positions
     confirmation = input(
-        f"Double-check the detector positions: "
-        f"PDF Position = {pdf_pos}, "
-        f"XRD Position = {xrd_pos} (y/n): ").strip().lower()
+        f"Confirm detector positions:\n"
+        f"  - PDF Position = {pdf_pos}\n"
+        f"  - XRD Position = {xrd_pos}\n"
+        f"Proceed with these settings? (y/n): ").strip().lower()
 
     if confirmation not in ['y', 'yes']:
         print("User chose not to proceed with the measurements.")
@@ -183,70 +185,35 @@ def mrun_2det_batch(smplist_pdf, smplist_xrd, posxlist, exp_pdf, exp_xrd, smpl_h
 def mrun_2det_xypos_batch(smplist_pdf, smplist_xrd, posxlist_pdf, posylist_pdf, posxlist_xrd, posylist_xrd,  exp_pdf, exp_xrd,
                     smpl_h=None, delay=1, pdf_pos=[0, 255], xrd_pos=[400, 275], num_pdf=1, num_xrd=1, pdf_flt_h=None,
                     pdf_flt=None, xrd_flt=None, motorx=sample_x, motory=sample_y, pdf_frame_acq=None, xrd_frame_acq=None,
-                    dets=[pe1_z, sample_x]):
+                    dets=None):
     '''
 
     Perform XRD measurements for all samples first, followed by PDF measurements.
     The function handles both X and Y positioning for the samples, and some samples may require only PDF or only XRD.
 
-    Parameters
-    ----------
-    smplist_pdf (list): List of sample names for PDF measurement.
-
-    smplist_xrd (list): List of sample names for XRD measurement.
-
-    posxlist_pdf (list): List of x positions for each sample requiring PDF measurement.
-
-    posylist_pdf (list): List of y positions for each sample requiring PDF measurement.
-
-    posxlist_xrd (list): List of x positions for each sample requiring xrd measurement.
-
-    posylist_xrd (list): List of y positions for each sample requiring xrd measurement.
-
-    exp_pdf (float): Total exposure time for PDF measurement, in seconds.
-
-    exp_xrd (float): Total exposure time for XRD measurement, in seconds. Ensure exp_pdf and exp_xrd are different.
-
-    smpl_h (list, optional): List of high scattering samples requiring special filters for PDF measurement.
-
-    delay (int, optional): Delay time between each sample's PDF measurement. Default is 1 second.
-
-    pdf_pos : list of int, optional, default=[0, 255]
-        [pe1_x, pe1_z] positions for the PE1 detector during PDF measurement.
-
-    xrd_pos : list of int, optional, default=[400, 275]
-        [pe1_x, pe1_z] positions for the PE1 detector during XRD measurement. Ensure pe1_z is safe for PE1 to move out.
-
-    num_pdf : int, optional, default=1
-        Number of data sets to collect for the PDF measurement.
-
-    num_xrd : int, optional, default=1
-        Number of data sets to collect for the XRD measurement.
-
-    pdf_flt_h : list, optional, default=None
-        Filter set for high scattering PDF samples in smpl_h.
-
-    pdf_flt : list, optional, default=None
-        Filter set for normal PDF samples.
-
-    xrd_flt : list, optional, default=None
-        Filter set for all XRD samples.
-
-    motorx : motor, optional
-        Motor for moving samples in the x direction. Default is sample_x.
-
-    motory : motor, optional
-        Motor for moving samples in the y direction. Default is sample_y.
-
-    pdf_frame_acq : float, optional, default=None
-        Frame acquisition time for the PE1 detector.
-
-    xrd_frame_acq : float, optional, default=None
-        Frame acquisition time for the PE2 detector.
-
-    dets : list, optional, default=[pe1_z, sample_x]
-        List of additional detectors (e.g., temperature controllers, motor positions) to record during both PDF and XRD measurements.
-
+    Parameters:
+        smplist_pdf: List of sample names for PDF measurement.
+        smplist_xrd: List of sample names for XRD measurement.
+        posxlist_pdf: List of x positions of each PDF sample.
+        posylist_pdf: List of y positions of each PDF sample.
+        posxlist_xrd: List of x positions of each xrd sample.
+        posylist_xrd: List of y positions of each xrd sample.
+        exp_pdf: Total exposure time for PDF measurement (seconds).
+        exp_xrd: Total exposure time for XRD measurement (seconds).
+        smpl_h: List of high-scattering samples needing special filters for PDF (optional).
+        delay: Delay time between each sample during PDF measurements (default: 1 second).
+        pdf_pos: Position of the PDF detector [pe1_x, pe1_z].
+        xrd_pos: Position of the XRD detector [pe1_x, pe1_z].
+        num_pdf: Number of data points to take for PDF measurements.
+        num_xrd: Number of data points to take for XRD measurements.
+        pdf_flt_h: Filter set for high-scattering PDF samples (default: None).
+        pdf_flt: Filter set for normal PDF samples (default: None).
+        xrd_flt: Filter set for XRD samples (default: None).
+        motorx: Motor to move samples in x direction, default is sample_x.
+        motory: Motor to move samples in y direction, default is sample_y
+        pdf_frame_acq: Frame acquisition time for PDF detector (default: None).
+        xrd_frame_acq: Frame acquisition time for XRD detector (default: None).
+        dets: List of detectors and motors to record in the data table.
     '''
 
     # Validate list lengths for PDF
@@ -267,12 +234,16 @@ def mrun_2det_xypos_batch(smplist_pdf, smplist_xrd, posxlist_pdf, posylist_pdf, 
 
     if smpl_h is None:
         smpl_h = []
-
+    if dets is None:
+        dets = []
+    dets = dets + [pe1_Z, motorx, motory]
+    
     # Ask the user to double-check the pdf_pos and xrd_pos values
     confirmation = input(
-        f"Double-check the detector positions: "
-        f"PDF Position = {pdf_pos}, "
-        f"XRD Position = {xrd_pos} (y/n): ").strip().lower()
+        f"Confirm detector positions:\n"
+        f"  - PDF Position = {pdf_pos}\n"
+        f"  - XRD Position = {xrd_pos}\n"
+        f"Proceed with these settings? (y/n): ").strip().lower()
 
     if confirmation not in ['y', 'yes']:
         print("User chose not to proceed with the measurements.")
@@ -331,50 +302,25 @@ def mrun_2det_xypos_batch(smplist_pdf, smplist_xrd, posxlist_pdf, posylist_pdf, 
 
 
 def run_2det(smpl_pdf, smpl_xrd, exp_pdf, exp_xrd, pdf_pos=[0, 255], xrd_pos=[400, 275], num_pdf=1, num_xrd=1,
-             pdf_flt=None, xrd_flt=None, pdf_frame_acq=None, xrd_frame_acq=None, dets=[pe1_z], confirm=True):
+             pdf_flt=None, xrd_flt=None, pdf_frame_acq=None, xrd_frame_acq=None, dets=None, confirm=True):
     '''
       Perform PDF and XRD measurements for one sample using two detectors.
 
-      Parameters:
-      -----------
-      smpl_pdf : str
-          Sample name for the PDF measurement.
-
-      smpl_xrd : str
-          Sample name for the XRD measurement.
-
-      exp_pdf : float
-          Total exposure time for the PDF measurement in seconds.
-
-      exp_xrd : float
-          Total exposure time for the XRD measurement in seconds. Ensure `exp_pdf` and `exp_xrd` are not the same.
-
-      pdf_pos : list of int, optional, default=[0, 255]
-          Detector 1 [pe1_x, pe1_z] positions for the PDF measurement.
-
-      xrd_pos : list of int, optional, default=[400, 275]
-          Detector 1 [pe1_x, pe1_z] positions for the XRD measurement. Ensure `pe1_z` is safe for PE1 to move out.
-
-      num_pdf : int, optional, default=1
-          Number of data sets to collect for the PDF measurement.
-
-      num_xrd : int, optional, default=1
-          Number of data sets to collect for the XRD measurement.
-
-      pdf_flt : list, optional, default=None
-          Filter setting to apply for the PDF samples, if applicable.
-
-      xrd_flt : list, optional, default=None
-          Filter setting to apply for the XRD samples, if applicable.
-
-      pdf_frame_acq : float, optional, default=None
-          Frame acquisition time for the PE1 detector.
-
-      xrd_frame_acq : float, optional, default=None
-          Frame acquisition time for the PE2 detector.
-
-      dets : list, optional, default=[pe1_z]
-          List of additional detectors to be used during both the PDF and XRD measurements.
+    Parameters:
+        smpl_pdf: sample names for PDF measurement.
+        smpl_xrd: sample names for XRD measurement.
+        exp_pdf: Total exposure time for PDF measurement (seconds).
+        exp_xrd: Total exposure time for XRD measurement (seconds).
+        pdf_pos: Position of the PDF detector [pe1_x, pe1_z].
+        xrd_pos: Position of the XRD detector [pe1_x, pe1_z].
+        num_pdf: Number of data points to take for PDF measurements.
+        num_xrd: Number of data points to take for XRD measurements.
+        pdf_flt: Filter set for normal PDF samples (default: None).
+        xrd_flt: Filter set for XRD samples (default: None).
+        motor: Motor to move samples, default is sample_x.
+        pdf_frame_acq: Frame acquisition time for PDF detector (default: None).
+        xrd_frame_acq: Frame acquisition time for XRD detector (default: None).
+        dets: List of detectors and motors to record in the data table.
 
       Returns:
       --------
@@ -384,17 +330,22 @@ def run_2det(smpl_pdf, smpl_xrd, exp_pdf, exp_xrd, pdf_pos=[0, 255], xrd_pos=[40
     # Input Validation
     if pdf_flt is not None and xrd_flt is None:
         raise ValueError("If pdf_flt is provided, xrd_flt must be provided.")
+
     if confirm is True:
         # Ask the user to double-check the pdf_pos and xrd_pos values
         confirmation = input(
-            f"Double-check the detector positions: "
-            f"PDF Position = {pdf_pos}, "
-            f"XRD Position = {xrd_pos} (y/n): ").strip().lower()
+            f"Confirm detector positions:\n"
+            f"  - PDF Position = {pdf_pos}\n"
+            f"  - XRD Position = {xrd_pos}\n"
+            f"Proceed with these settings? (y/n): ").strip().lower()
 
         if confirmation not in ['y', 'yes']:
             print("User chose not to proceed with the measurements.")
             return  # Exit the function if the user doesn't confirm
-
+    
+    if dets is None:
+        dets=[]
+        
     # Disable auto-loading calibration
     glbl["auto_load_calib"] = False
 
@@ -438,38 +389,37 @@ def run_2det(smpl_pdf, smpl_xrd, exp_pdf, exp_xrd, pdf_pos=[0, 255], xrd_pos=[40
     glbl["auto_load_calib"] = True
 
 
-def set_xrd(xrd_pos=[400, 280], frame_acq_time=0.2):
+def set_xrd(xrd_pos=[400, 280], frame_acq_time=0.2, confirm=True):
+
     ''' Set the acquisition system for XRD measurements.
 
     This function moves the PE1 detector out of the way by adjusting the x and z positions and
     configures the XPD system to use the PE2C detector with the specified frame acquisition time.
 
     Parameters:
-        xrd_pos (list): A list containing the x and z positions to move the PE1 detector. Default is [400, 280].
+        xrd_pos (list): Position of the PE1 detector [pe1_x, pe1_z] for XRD measurement Default is [400, 280].
         frame_acq_time (float): frame acquisition time. Default is 0.2
     '''
     xrd_pe1x, xrd_pe1z = xrd_pos
 
+    if confirm is True:
+        # Ask the user to double-check the pdf_pos and xrd_pos values
+        confirmation = input(
+            f"Confirm detector positions:\n"
+            f"  - XRD Position = {xrd_pos}\n"
+            f"Proceed with these settings? (y/n): ").strip().lower()
+        
+        if confirmation not in ['y', 'yes']:
+            print("User chose not to proceed with the measurements.")
+            return  # Exit the function if the user doesn't confirm
 
-    # Prompt the user to confirm if the z position is safe
-    user_input = input(f"Are you sure the z position {xrd_pe1z} is safe for PE1 to move out? (Y/N): ").strip().lower()
+    pe1_z.move(xrd_pe1z)
+    pe1_x.move(xrd_pe1x)
 
-    if user_input in ['y', 'yes']:
-        # Ensure motors are available before attempting to move
-        pe1_z.move(xrd_pe1z)
-        pe1_x.move(xrd_pe1x)
+    xpd_configuration['area_det'] = pe2c
+    glbl['frame_acq_time'] = frame_acq_time
 
-        xpd_configuration['area_det'] = pe2c
-        glbl['frame_acq_time'] = frame_acq_time
-
-    elif user_input in ['n', 'no']:
-        print("Operation aborted by the user.")
-
-    else:
-        print("Invalid input. Operation aborted")
-
-
-def set_pdf(pdf_pos=[0, 255], safe_out=280, frame_acq_time=0.2):
+def set_pdf(pdf_pos=[0, 255], safe_out=280, frame_acq_time=0.2, confirm=True):
 
     ''' Set up the acquisition system for PDF (Pair Distribution Function) measurements.
 
@@ -477,41 +427,34 @@ def set_pdf(pdf_pos=[0, 255], safe_out=280, frame_acq_time=0.2):
     and updates the XPD configuration to use PE1C as the area detector with the specified
     frame acquisition time.
 
-    Args:
-        pdf_pos (list): A list containing two values, the x and z positions to move the PE1 detector for PDF measurement.
-                        Default is [0, 255].
+    Parameters:
+        pdf_pos (list): Position of the PE1 detector [pe1_x, pe1_z] for PDF measurement, Default is [0, 255].
         safe_out (float): The safe z position to move PE1 to before adjusting x and z. Default is 280.
         frame_acq_time (float): The frame acquisition time to set in the global configuration. Default is 0.2 seconds.
 
-
-    set xpdacq for xrd measurement: move PE1 detector in position,
-                            xpd_configure['area_det'] = pe1c
-                            glbl['frame_acq_time'] = 0.2
-    :param pdf_pos:  PE1 position for PDF measurement
-    :param safe_out: pe1_z position to safely move PE1 in position
-    :return:
     '''
+    if confirm is True:
+        # Ask the user to double-check the pdf_pos and xrd_pos values
+        confirmation = input(
+            f"Confirm detector positions:\n"
+            f"  - PDF Position = {pdf_pos}\n"
+            f"  - safe z out = {safe_out}\n"
+            f"Proceed with these settings? (y/n): ").strip().lower()
+        if confirmation not in ['y', 'yes']:
+            print("User chose not to proceed with the measurements.")
+            return  # Exit the function if the user doesn't confirm
+
     pdf_pe1x, pdf_pe1z = pdf_pos
 
-    # Ask for confirmation with a loop to handle invalid inputs
-    user_input = input(
-        f"Are you sure the safe z position {safe_out} is safe for PE1 to move in? (Y/N): ").strip().lower()
-
-    if user_input in ['y', 'yes']:
-        pe1_z.move(safe_out)
-        pe1_x.move(pdf_pe1x)
-        pe1_z.move(pdf_pe1z)
-        xpd_configuration['area_det'] = pe1c
-        glbl['frame_acq_time'] = frame_acq_time
-
-    elif user_input in ['n', 'no']:
-        print("Operation aborted by the user. ")
-
-    else:
-        print("Invalid input. Operation aborted")
+    pe1_z.move(safe_out)
+    pe1_x.move(pdf_pe1x)
+    pe1_z.move(pdf_pe1z)
+    xpd_configuration['area_det'] = pe1c
+    glbl['frame_acq_time'] = frame_acq_time
 
 
-def run_xrd(smpl, exp_xrd, num=1, xrd_pos=[400, 280], calib_file='config_base/xrd.poni', frame_acq_time=0.2, dets=None):
+def run_xrd(smpl, exp_xrd, num=1, xrd_pos=[400, 280], calib_file='config_base/xrd.poni',
+            frame_acq_time=0.2, dets=None, confirm=True):
     ''' Run one XRD measurement with specified calib_file,
         setup xrd configuration first if was not in xrd configuration yet.
 
@@ -540,7 +483,7 @@ def run_xrd(smpl, exp_xrd, num=1, xrd_pos=[400, 280], calib_file='config_base/xr
             glbl['frame_acq_time'] = frame_acq_time
     else:
         print(f"Setting up PE2 detector for XRD measurement. Moving PE1 to position {xrd_pos}.")
-        set_xrd(xrd_pos=xrd_pos, frame_acq_time=frame_acq_time)
+        set_xrd(xrd_pos=xrd_pos, frame_acq_time=frame_acq_time, confirm=confirm)
 
     time.sleep(1)
     # Disable automatic calibration loading
@@ -564,7 +507,7 @@ def run_xrd(smpl, exp_xrd, num=1, xrd_pos=[400, 280], calib_file='config_base/xr
 
 
 def run_pdf(smpl, exp_pdf, num=1, pdf_pos=[0, 255], safe_out=280, calib_file='config_base/pdf.poni',
-            frame_acq_time=0.2, dets=[pe1_z]):
+            frame_acq_time=0.2, dets=[pe1_z], confirm=True):
 
     ''' Run one PDF measurement, moving the PE1 detector to the specified position
         and configuring the system for PDF measurements.
@@ -591,7 +534,7 @@ def run_pdf(smpl, exp_pdf, num=1, pdf_pos=[0, 255], safe_out=280, calib_file='co
             glbl['frame_acq_time'] = frame_acq_time
     else:
         print(f"Setting up PE1 detector for PDF measurement. Moving PE1 to position {pdf_pos}.")
-        set_pdf(pdf_pos=pdf_pos, safe_out=safe_out, frame_acq_time=frame_acq_time)
+        set_pdf(pdf_pos=pdf_pos, safe_out=safe_out, frame_acq_time=frame_acq_time, confirm=confirm)
 
     time.sleep(1)
     # Disable automatic calibration loading
