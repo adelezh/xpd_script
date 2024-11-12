@@ -3,7 +3,7 @@ import time
 
 def mscan_2det(smplist_pdf, smplist_xrd, posxlist, exp_pdf, exp_xrd, smpl_h=None, delay=1,
                pdf_pos=[0, 255], xrd_pos=[400, 275], num_pdf=1, num_xrd=1, pdf_flt_h=None, pdf_flt=None, xrd_flt=None,
-               motorx=sample_x, pdf_frame_acq=None, xrd_frame_acq=None, dets=[pe1_z, sample_x]):
+               motorx=sample_x, pdf_frame_acq=None, xrd_frame_acq=None, dets=[pe1_z, sample_x], confirm=True):
     '''
     Multiple samples, do pdf and xrd for one sample, then move to the next sample
     Parameters:
@@ -40,18 +40,20 @@ def mscan_2det(smplist_pdf, smplist_xrd, posxlist, exp_pdf, exp_xrd, smpl_h=None
         raise ValueError("If pdf_flt is provided, both xrd_flt must also be provided.")
 
     # Ask the user confirm detector positions
-    confirmation = input(
-        f"Confirm detector positions:\n"
-        f"  - PDF Position = {pdf_pos}\n"
-        f"  - XRD Position = {xrd_pos}\n"
-        f"Proceed with these settings? (y/n): ").strip().lower()
+    if confirm is True:
+        confirmation = input(
+            f"Confirm detector positions:\n"
+            f"  - PDF Position = {pdf_pos}\n"
+            f"  - XRD Position = {xrd_pos}\n"
+            f"Proceed with these settings? (y/n): ").strip().lower()
 
-    if confirmation not in ['y', 'yes']:
-        print("User chose not to proceed with the measurements.")
-        return  # Exit the function if the user doesn't confirm
+        if confirmation not in ['y', 'yes']:
+            print("User chose not to proceed with the measurements.")
+            return  # Exit the function if the user doesn't confirm
 
     if smpl_h is None:
         smpl_h = []
+
     for smpl_xrd, smpl_pdf, posx in zip(smplist_xrd, smplist_pdf, posxlist):
         print(f' {smpl_xrd}, {smpl_pdf}, in position {posx}')
         motorx.move(posx)
@@ -79,7 +81,7 @@ def mscan_2det(smplist_pdf, smplist_xrd, posxlist, exp_pdf, exp_xrd, smpl_h=None
 
 def mrun_2det_batch(smplist_pdf, smplist_xrd, posxlist, exp_pdf, exp_xrd, smpl_h=[], delay=1,
                  pdf_pos=[0, 240], xrd_pos=[400, 270], num_pdf=1, num_xrd=1, pdf_flt_h=None, pdf_flt=None, xrd_flt=None,
-                 motorx=sample_x, pdf_frame_acq=None, xrd_frame_acq=None, dets=[pe1_z, sample_x]):
+                 motorx=sample_x, pdf_frame_acq=None, xrd_frame_acq=None, dets=[pe1_z, sample_x], confirm=True):
     '''
     Multiple samples, do pdf measurment for all sample first, then do xrd measuremnt
 
@@ -119,15 +121,16 @@ def mrun_2det_batch(smplist_pdf, smplist_xrd, posxlist, exp_pdf, exp_xrd, smpl_h
         raise ValueError("If pdf_flt is provided, both xrd_flt must also be provided.")
 
     # Ask the user to confirm detector positions
-    confirmation = input(
-        f"Confirm detector positions:\n"
-        f"  - PDF Position = {pdf_pos}\n"
-        f"  - XRD Position = {xrd_pos}\n"
-        f"Proceed with these settings? (y/n): ").strip().lower()
+    if confirm is True:
+        confirmation = input(
+            f"Confirm detector positions:\n"
+            f"  - PDF Position = {pdf_pos}\n"
+            f"  - XRD Position = {xrd_pos}\n"
+            f"Proceed with these settings? (y/n): ").strip().lower()
 
-    if confirmation not in ['y', 'yes']:
-        print("User chose not to proceed with the measurements.")
-        return  # Exit the function if the user doesn't confirm
+        if confirmation not in ['y', 'yes']:
+            print("User chose not to proceed with the measurements.")
+            return  # Exit the function if the user doesn't confirm
 
     # Disable automatic loading of calibration during batch processing
     glbl["auto_load_calib"] = False
@@ -183,21 +186,18 @@ def mrun_2det_batch(smplist_pdf, smplist_xrd, posxlist, exp_pdf, exp_xrd, smpl_h
 
 
 def mrun_2det_xypos_batch(smplist_pdf, smplist_xrd, posxlist_pdf, posylist_pdf, posxlist_xrd, posylist_xrd,  exp_pdf, exp_xrd,
-                    smpl_h=None, delay=1, pdf_pos=[0, 255], xrd_pos=[400, 275], num_pdf=1, num_xrd=1, pdf_flt_h=None,
+                    delay=1, smpl_h=None, pdf_pos=[0, 255], xrd_pos=[400, 275], num_pdf=1, num_xrd=1, pdf_flt_h=None,
                     pdf_flt=None, xrd_flt=None, motorx=sample_x, motory=sample_y, pdf_frame_acq=None, xrd_frame_acq=None,
-                    dets=None):
+                    dets=None, confirm=True):
     '''
 
     Perform XRD measurements for all samples first, followed by PDF measurements.
     The function handles both X and Y positioning for the samples, and some samples may require only PDF or only XRD.
 
     Parameters:
-        smplist_pdf: List of sample names for PDF measurement.
-        smplist_xrd: List of sample names for XRD measurement.
-        posxlist_pdf: List of x positions of each PDF sample.
-        posylist_pdf: List of y positions of each PDF sample.
-        posxlist_xrd: List of x positions of each xrd sample.
-        posylist_xrd: List of y positions of each xrd sample.
+        smplist_pdf, smplist_xrd : List of sample names for PDF, XRD measurement.
+        posxlist_pdf, posylist_pdf: List of x and y positions of each PDF sample.
+        posxlist_xrd, posylist_xrd: List of x and y positions of each xrd sample.
         exp_pdf: Total exposure time for PDF measurement (seconds).
         exp_xrd: Total exposure time for XRD measurement (seconds).
         smpl_h: List of high-scattering samples needing special filters for PDF (optional).
@@ -239,15 +239,16 @@ def mrun_2det_xypos_batch(smplist_pdf, smplist_xrd, posxlist_pdf, posylist_pdf, 
     dets = dets + [pe1_Z, motorx, motory]
     
     # Ask the user to double-check the pdf_pos and xrd_pos values
-    confirmation = input(
-        f"Confirm detector positions:\n"
-        f"  - PDF Position = {pdf_pos}\n"
-        f"  - XRD Position = {xrd_pos}\n"
-        f"Proceed with these settings? (y/n): ").strip().lower()
+    if confirm is True:
+        confirmation = input(
+            f"Confirm detector positions:\n"
+            f"  - PDF Position = {pdf_pos}\n"
+            f"  - XRD Position = {xrd_pos}\n"
+            f"Proceed with these settings? (y/n): ").strip().lower()
 
-    if confirmation not in ['y', 'yes']:
-        print("User chose not to proceed with the measurements.")
-        return  # Exit the function if the user doesn't confirm
+        if confirmation not in ['y', 'yes']:
+            print("User chose not to proceed with the measurements.")
+            return  # Exit the function if the user doesn't confirm
 
     # Disable automatic loading of calibration during batch processing
     glbl["auto_load_calib"] = False
@@ -362,7 +363,7 @@ def run_2det(smpl_pdf, smpl_xrd, exp_pdf, exp_xrd, pdf_pos=[0, 255], xrd_pos=[40
     xpd_configuration['area_det'] = pe1c
     if pdf_frame_acq is not None:
         glbl['frame_acq_time'] = pdf_frame_acq
-        time.sleep(1)
+        time.sleep(5)
     # Move to the PDF position with the correct sequence
     pe1_z.move(xrd_pe1z)  # Move z to a safe position
     pe1_x.move(pdf_pe1x)  # Move x to the PDF position
@@ -481,11 +482,11 @@ def run_xrd(smpl, exp_xrd, num=1, xrd_pos=[400, 280], calib_file='config_base/xr
         xpd_configuration['area_det'] = pe2c
         if glbl['frame_acq_time'] != frame_acq_time:
             glbl['frame_acq_time'] = frame_acq_time
+            time.sleep(3)
     else:
         print(f"Setting up PE2 detector for XRD measurement. Moving PE1 to position {xrd_pos}.")
         set_xrd(xrd_pos=xrd_pos, frame_acq_time=frame_acq_time, confirm=confirm)
 
-    time.sleep(1)
     # Disable automatic calibration loading
     glbl["auto_load_calib"] = False
 
@@ -532,11 +533,11 @@ def run_pdf(smpl, exp_pdf, num=1, pdf_pos=[0, 255], safe_out=280, calib_file='co
         xpd_configuration['area_det'] = pe1c
         if glbl['frame_acq_time'] != frame_acq_time:
             glbl['frame_acq_time'] = frame_acq_time
+            time.sleep(3)
     else:
         print(f"Setting up PE1 detector for PDF measurement. Moving PE1 to position {pdf_pos}.")
         set_pdf(pdf_pos=pdf_pos, safe_out=safe_out, frame_acq_time=frame_acq_time, confirm=confirm)
 
-    time.sleep(1)
     # Disable automatic calibration loading
     glbl["auto_load_calib"] = False
 
