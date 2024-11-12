@@ -280,9 +280,11 @@ def linescan(smpl, exp_time, xstart, xend, xpoints, motor=sample_y, md=None, det
     # Log the scan details
     print(f'Starting line scan for sample {smpl}')
     print(f'Line scan parameters: xstart={xstart}, xend={xend}, xpoints={xpoints}, exp_time={exp_time}s')
-    dets = xpd_configuration['area_det']+det
+
+
+
     if takeonedark is True:
-        take_one_dark(smpl, dets, exp_time)
+        take_one_dark(smpl, [pe1c], exp_time)
     # Create the scan plan
     plan = lineplan(exp_time, xstart, xend, xpoints, motor=motor, md=md, det=det)
     xrun(smpl, plan)
