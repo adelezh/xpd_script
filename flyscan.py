@@ -47,7 +47,7 @@ def _extract_motor_pos(mtr):
     )
 
 
-def xrd_map(
+def xrd_line(
     dets,
     shutter,
     fly_motor,
@@ -106,7 +106,7 @@ def xrd_map(
     plan_args_cache = {
         k: v
         for k, v in locals().items()
-        if k not in ("dets", "fly_motor", "step_motor", "dark_plan", "shutter")
+        if k not in ("dets", "fly_motor", "dark_plan", "shutter")
     }
 
     (ad,) = (d for d in dets if hasattr(d, "cam"))
@@ -203,7 +203,7 @@ def xrd_map(
                 yield from bps.mv(px_stop, stop_pos)
                 # generate the event
                 yield from bps.create("primary")
-                for obj in dets + [px_start, px_stop, step_motor]:
+                for obj in dets + [px_start, px_stop]:
                     yield from bps.read(obj)
                 yield from bps.save()
                 print(time.time)
@@ -245,7 +245,21 @@ def dark_plan(detector, shell, *, stream_name="dark"):
     yield from bps.unstage(detector)
     yield from bps.stage(detector)
 
-def linescan(smpl, exp_time, xstart, xend, xpoints, motor=sample_y, md=None, det=None):
+def take_one_dark(sample, det, exp_time):
+    """ take one data with dark image, then set dark window to 1000 minutes
+
+    parameter:
+    sample (int): sample name(index) in sample list
+    det (list): list of detectors
+    exp_time (float): exposure time in seconds
+
+    """
+    glbl['dk_window'] = 0.1
+    plan = ct_motors_plan(det, exp_time)
+    xrun(sample, plan)
+    glbl['dk_window'] = 1000
+
+def linescan(smpl, exp_time, xstart, xend, xpoints, motor=sample_y, md=None, det=None, takeonedark=False):
 
     """  line scan by moving a motor between `xstart` and `xend` in `xpoints` steps and recording measurements.
 
@@ -266,7 +280,9 @@ def linescan(smpl, exp_time, xstart, xend, xpoints, motor=sample_y, md=None, det
     # Log the scan details
     print(f'Starting line scan for sample {smpl}')
     print(f'Line scan parameters: xstart={xstart}, xend={xend}, xpoints={xpoints}, exp_time={exp_time}s')
-
+    dets = xpd_configuration['area_det']+det
+    if takeonedark is True:
+        take_one_dark(smpl, dets, exp_time)
     # Create the scan plan
     plan = lineplan(exp_time, xstart, xend, xpoints, motor=motor, md=md, det=det)
     xrun(smpl, plan)
@@ -345,9 +361,12 @@ def ct_motors_plan(det, exp_time, num=1, delay=0, md=None):
     #plan = bpp.plan_mutator(plan, inner_shutter_control)
     yield from plan
 
-def simple_set_run(smpl, exp_time, num, xstart, xend, motor, repeats=1, motor_v=1, md = None):
+def simple_set_run(smpl, exp_time, num, xstart, xend, motor, repeats=1, motor_v=1, md = None, takeonedark=Flase):
 
     det = [pe1c, motor]
+    if takeonedark is True:
+        take_one_dark(smpl, dets, exp_time)
+
     for i in range(repeats):
         #move motor to start point with 10mm/s velocity
         motor.velocity.move(10)
