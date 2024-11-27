@@ -27,7 +27,7 @@ from os import chmod
 from pandas.core.common import flatten
 
 
-def xpd_mscan(sample_list, pos_list, scanplan, delay=0, smpl_h=None, flt_h=None, flt_l=None, motor=sample_x):
+def xpd_mscan(sample_list, pos_list, exp_time, num=1, delay_num=0, delay=0, smpl_h=None, flt_h=None, flt_l=None, motor=sample_x, dets=None):
     """ multi-sample scan
 
     Perform a multi-sample scan by moving samples to specified positions, applying filters, and executing a scan plan.
@@ -65,10 +65,17 @@ def xpd_mscan(sample_list, pos_list, scanplan, delay=0, smpl_h=None, flt_h=None,
 
     if smpl_h is None:
         smpl_h = []
+    if dets is None:
+        dets = []
 
     length = len(sample_list)
     print('Total sample numbers:', length)
 
+    area_det = xpd_configuration['area_det']
+    det = [area_det] + dets
+    if delay_num !=0:
+        delay_num1 = delay_num + exp_time
+    
     for sample, pos in zip(sample_list, pos_list):
         print(f'Move sample {sample} to position {pos}')
         motor.move(pos)
@@ -88,14 +95,15 @@ def xpd_mscan(sample_list, pos_list, scanplan, delay=0, smpl_h=None, flt_h=None,
 
         # Run the scan plan
         print(f'Running scan plan for sample {sample}')
-        xrun(sample, scanplan)
+        plan = ct_motors_plan(det, exp_time, num=num, delay=delay_num1)
+        xrun(smpl, plan)
 
     print('Multi-sample scan complete.')
 
 
 
-def xpd_m2dscan(sample_list, posx_list, posy_list, scanplan, delay=0, smpl_h=None, flt_h=None, flt_l=None,
-                motorx=sample_x, motory=sample_y):
+def xpd_m2dscan(sample_list, posx_list, posy_list, exp_time, num=1, delay_num=0, delay=0, smpl_h=None, flt_h=None, flt_l=None,
+                motorx=sample_x, motory=sample_y, dets=None):
     """ Perform multi-sample scans by moving samples to predefined x and y positions, applying filters,
     and executing a scan plan.
 
@@ -133,6 +141,14 @@ def xpd_m2dscan(sample_list, posx_list, posy_list, scanplan, delay=0, smpl_h=Non
 
     if smpl_h is None:
         smpl_h = []
+    if dets is None:
+        dets = []
+    
+    area_det = xpd_configuration['area_det']
+    det = [area_det] + dets
+    if delay_num !=0:
+        delay_num1 = delay_num + exp_time
+
     length = len(sample_list)
     print('Total sample numbers:', length)
 
@@ -149,7 +165,9 @@ def xpd_m2dscan(sample_list, posx_list, posy_list, scanplan, delay=0, smpl_h=Non
         # Delay between samples
         time.sleep(delay)
         #run the scan plan
-        xrun(sample, scanplan)
+        print(f'Running scan plan for sample {sample}')
+        plan = ct_motors_plan(det, exp_time, num=num, delay=delay_num1)
+        xrun(smpl, plan)    
 
         return None
 
@@ -234,7 +252,7 @@ def xpd_batteryxy(smpl_list, posx_list, posy_list, scanplan, cycle=1, delay=0, m
 
 
 
-def linescan(smpl, exp_time, xstart, xend, xpoints, motor=sample_y, md=None, det=None):
+def linescan(smpl, exp_time, xstart, xend, xpoints, motor=sample_y, md=None, dets=None):
 
     """  line scan by moving a motor between `xstart` and `xend` in `xpoints` steps and recording measurements.
 
@@ -257,12 +275,12 @@ def linescan(smpl, exp_time, xstart, xend, xpoints, motor=sample_y, md=None, det
     print(f'Line scan parameters: xstart={xstart}, xend={xend}, xpoints={xpoints}, exp_time={exp_time}s')
 
     # Create the scan plan
-    plan = lineplan(exp_time, xstart, xend, xpoints, motor=motor, md=md, det=det)
+    plan = lineplan(exp_time, xstart, xend, xpoints, motor=motor, md=md, dets=dets)
     xrun(smpl, plan)
 
 
 def mlinescan(smplist, poslist, exp_time, lstart, lend, lpoints, pos_motor=sample_x, lmotor=sample_y,
-              smpl_h=None, flt_l=None, flt_h=None, det=None, md=None):
+              smpl_h=None, flt_l=None, flt_h=None, dets=None, md=None):
     """ Perform line scans for multiple samples. For each sample, the function moves the sample to a specified position
      and measures multiple points along a line using a motor.
 
@@ -294,13 +312,13 @@ def mlinescan(smplist, poslist, exp_time, lstart, lend, lpoints, pos_motor=sampl
     if smpl_h is not None and (flt_h is None or flt_l is None):
         raise ValueError("If smpl_h is provided, both flt_h and flt_l must also be provided.")
 
-    if det is None:
-        det = []
+    if dets is None:
+        dets = []
     if smpl_h is None:
         smpl_h = []
 
     # Combine the position motor with other detectors if any
-    dets = [pos_motor] + det
+    dets = [pos_motor] + dets
     length = len(smplist)
     print(f'Total sample numbers:{length}')
 
@@ -316,14 +334,14 @@ def mlinescan(smplist, poslist, exp_time, lstart, lend, lpoints, pos_motor=sampl
             if flt_l is not None:
                 xpd_flt_set(flt_l)
 
-        plan = lineplan(exp_time, lstart, lend, lpoints, motor=lmotor, md=md, det=dets)
+        plan = lineplan(exp_time, lstart, lend, lpoints, motor=lmotor, md=md, dets=dets)
         xrun(smpl, plan)
 
 
 
 
 def gridscan(smpl, exp_time, xstart, xstop, xpoints, ystart, ystop, ypoints,
-             motorx=sample_x, motory=sample_y, md=None, det=None):
+             motorx=sample_x, motory=sample_y, md=None, dets=None):
     """
         Perform a grid scan by moving a sample across a grid of x and y points.
 
@@ -352,12 +370,12 @@ def gridscan(smpl, exp_time, xstart, xstop, xpoints, ystart, ystop, ypoints,
     print(f"Exposure time per point: {exp_time} seconds")
 
     # Create the grid scan plan and execute
-    plan = gridplan(exp_time, xstart, xstop, xpoints, ystart, ystop, ypoints, motorx=motorx, motory=motory, md=md, det=det)
+    plan = gridplan(exp_time, xstart, xstop, xpoints, ystart, ystop, ypoints, motorx=motorx, motory=motory, md=md, dets=dets)
     xrun(smpl, plan)
 
 
 def mgridscan(smplist, exp_time, xcenter_list, xrange, xpoints, ycenter_list, yrange, ypoints, delay=1,
-              motorx=sample_x, motory=sample_y, smpl_h=None, flt_l=None, flt_h=None, md=None, det=None):
+              motorx=sample_x, motory=sample_y, smpl_h=None, flt_l=None, flt_h=None, md=None, dets=None):
 
     """ Perform grid scan for multiple samples.
 
@@ -433,11 +451,11 @@ def mgridscan(smplist, exp_time, xcenter_list, xrange, xpoints, ycenter_list, yr
 
         # Create the grid scan plan and execute the scan
         plan = gridplan(exp_time, xstart, xstop, xpoints, ystart, ystop, ypoints, motorx=motorx, motory=motory, md=md,
-                        det=det)
+                        det=dets)
         xrun(smpl, plan)
 
 
-def xyposscan(smpl, exp_time, posxlist, posylist, motorx=sample_x, motory=sample_y, md=None, det=None):
+def xyposscan(smpl, exp_time, posxlist, posylist, motorx=sample_x, motory=sample_y, md=None, dets=None):
 
     """ Perform a multiple points scan for one sample by moving to predefined x and y positions.
 
@@ -466,5 +484,5 @@ def xyposscan(smpl, exp_time, posxlist, posylist, motorx=sample_x, motory=sample
     print(f"Exposure time per position: {exp_time} seconds")
 
     # Create the plan using xyposplan and execute the plan using xrun
-    plan = xyposplan(exp_time, posxlist, posylist, motorx=motorx, motory=motory, md=md, det=det)
+    plan = xyposplan(exp_time, posxlist, posylist, motorx=motorx, motory=motory, md=md, dets=dets)
     xrun(smpl, plan)
