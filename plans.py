@@ -11,6 +11,14 @@ def plan_with_calib(dets, exp_time, num, calib_file):
         plan_with_calib([pec1, det2], 5.0, 10, calib_file='xrd.poni')
     """
 
+    (num_frame, acq_time, computed_exposure) = yield from _configure_area_det(exp_time)
+
+    if ion_chamber in dets:
+        if ion_chamber.period.get()!= acq_time:
+            yield from bps.mv(ion_chamber.period, acq_time)
+        ion_chamber.trigs_to_average = num_frame 
+    
+
     motors = dets[1:]
     # Configure the area detector
     yield from _configure_area_det(exp_time)
@@ -67,12 +75,12 @@ def count_with_calib(detectors: list, num: int = 1, delay: float = None, *, cali
     return sts
 
 
-def ct_motors_plan(det, exp_time, num=1, delay=0, md=None):
+def ct_motors_plan(dets, exp_time, num=1, delay=0, md=None):
     """plan for performing multiple readings of detectors (e.g., temperature controller, motor positions) and display results
     in real-time using LiveTable.
 
     Parameters:
-        det (list): List of detectors to be read during the scan (e.g., area detector, temperature controller, motors).
+        dets (list): List of detectors to be read during the scan (e.g., area detector, temperature controller, motors).
         exp_time (float): Exposure time (in seconds) for each reading.
         num (int, optional): Number of readings to take. Default is 1.
         delay (float, optional): Delay (in seconds) between successive readings. Default is 0.
@@ -96,14 +104,19 @@ def ct_motors_plan(det, exp_time, num=1, delay=0, md=None):
 
     _md.update(md or {})
 
-    motors = det[1:]
-    plan = bp.count(det, num, delay, md=_md)
+    if ion_chamber in dets:
+        if ion_chamber.period.get()!= acq_time:
+            yield from bps.mv(ion_chamber.period, acq_time)
+        ion_chamber.trigs_to_average = num_frame 
+    
+    motors = dets[1:]
+    plan = bp.count(dets, num, delay, md=_md)
     plan = bpp.subs_wrapper(plan, LiveTable(motors))
     plan = bpp.plan_mutator(plan, inner_shutter_control)
     yield from plan
 
 
-def lineplan(exp_time, xstart, xend, xpoints, motor=sample_y, md=None, det=None):
+def lineplan(exp_time, xstart, xend, xpoints, motor=sample_y, md=None, dets=None):
     """ plan for 1D line scan by moving a motor between two positions and recording measurements at multiple points.
 
     Parameters:
@@ -113,15 +126,15 @@ def lineplan(exp_time, xstart, xend, xpoints, motor=sample_y, md=None, det=None)
         xpoints (int): Number of points to measure along the line.
         motor (object, optional): Motor object to move the sample along the line. Default is `sample_y`.
         md (dict, optional): Additional metadata to attach to the scan.
-        det (list, optional): List of extra detectors to record during the scan.
+        dets (list, optional): List of extra detectors to record during the scan.
 
     Example:
         lineplan(5.0, 0, 10, 5, motor=sample_y)
 
     """
 
-    if det is None:
-        det = []
+    if dets is None:
+        dets = []
     # Configure the area detector
     (num_frame, acq_time, computed_exposure) = yield from _configure_area_det(exp_time)
 
@@ -135,16 +148,21 @@ def lineplan(exp_time, xstart, xend, xpoints, motor=sample_y, md=None, det=None)
     }
     _md.update(md or {})
 
+    if ion_chamber in dets:
+        if ion_chamber.period.get()!= acq_time:
+            yield from bps.mv(ion_chamber.period, acq_time)
+        ion_chamber.trigs_to_average = num_frame 
+    
     area_det = xpd_configuration['area_det']
 
-    plan = bp.scan([area_det] + det, motor, xstart, xend, xpoints, md=_md)
-    plan = bpp.subs_wrapper(plan, LiveTable([motor] + det))
+    plan = bp.scan([area_det] + dets, motor, xstart, xend, xpoints, md=_md)
+    plan = bpp.subs_wrapper(plan, LiveTable([motor] + dets))
     plan = bpp.plan_mutator(plan, inner_shutter_control)
     yield from plan
 
 
 def gridplan(exp_time, xstart, xstop, xpoints, ystart, ystop, ypoints, motorx=sample_x, motory=sample_y, md=None,
-             det=None):
+             dets=None):
 
     """ plan for 2D grid scan by moving two motors across specified ranges and collecting data using detectors.
 
@@ -162,11 +180,11 @@ def gridplan(exp_time, xstart, xstop, xpoints, ystart, ystop, ypoints, motorx=sa
         motorx (object, optional): Motor object to move the sample along the x-axis. Default is `sample_x`.
         motory (object, optional): Motor object to move the sample along the y-axis. Default is `sample_y`.
         md (dict, optional): Additional metadata to attach to the scan.
-        det (list, optional): List of extra detectors to record during the scan.
+        dets (list, optional): List of extra detectors to record during the scan.
     """
 
-    if det is None:
-        det = []
+    if dets is None:
+        dets = []
 
     # Configure the ara detector
     (num_frame, acq_time, computed_exposure) = yield from _configure_area_det(exp_time)
@@ -180,15 +198,20 @@ def gridplan(exp_time, xstart, xstop, xpoints, ystart, ystop, ypoints, motorx=sa
     }
     _md.update(md or {})
 
+    if ion_chamber in dets:
+        if ion_chamber.period.get()!= acq_time:
+            yield from bps.mv(ion_chamber.period, acq_time)
+        ion_chamber.trigs_to_average = num_frame 
+    
     area_det = xpd_configuration['area_det']
 
-    plan = bp.grid_scan([area_det]+det, motory, ystart, ystop, ypoints, motorx, xstart, xstop, xpoints, True, md=_md)
-    plan = bpp.subs_wrapper(plan, LiveTable([motorx, motory]+det))
+    plan = bp.grid_scan([area_det]+dets, motory, ystart, ystop, ypoints, motorx, xstart, xstop, xpoints, True, md=_md)
+    plan = bpp.subs_wrapper(plan, LiveTable([motorx, motory]+dets))
     plan = bpp.plan_mutator(plan, inner_shutter_control)
     yield from plan
 
 
-def xyposplan(exp_time, posxlist, posylist, motorx=sample_x, motory=sample_y, md=None, det=None):
+def xyposplan(exp_time, posxlist, posylist, motorx=sample_x, motory=sample_y, md=None, dets=None):
     """ plan for a scan over a set of predefined x and y positions.
 
     Parameters:
@@ -198,7 +221,7 @@ def xyposplan(exp_time, posxlist, posylist, motorx=sample_x, motory=sample_y, md
         motorx (object, optional): Motor object to move the sample along the x-axis. Default is `sample_x`.
         motory (object, optional): Motor object to move the sample along the y-axis. Default is `sample_y`.
         md (dict, optional): Additional metadata to attach to the scan.
-        det (list, optional): List of extra detectors to record during the scan.
+        dets (list, optional): List of extra detectors to record during the scan.
 
     Example:
         plan = xyposplan(5, [10, 13, 20], [1.2, 1.3, 1.4])
@@ -208,8 +231,8 @@ def xyposplan(exp_time, posxlist, posylist, motorx=sample_x, motory=sample_y, md
     if len(posxlist) != len(posylist):
         raise ValueError("posxlist and posylist must have the same length")
 
-    if det is None:
-        det = []
+    if dets is None:
+        dets = []
 
     # Configure detector
     (num_frame, acq_time, computed_exposure) = yield from _configure_area_det(exp_time)
@@ -225,22 +248,27 @@ def xyposplan(exp_time, posxlist, posylist, motorx=sample_x, motory=sample_y, md
     _md.update(md or {})
     area_det = xpd_configuration['area_det']
 
-    plan = bp.list_scan([area_det]+det, motorx, posxlist, motory, posylist, md=_md)
+    if ion_chamber in dets:
+        if ion_chamber.period.get()!= acq_time:
+            yield from bps.mv(ion_chamber.period, acq_time)
+        ion_chamber.trigs_to_average = num_frame 
+
+    plan = bp.list_scan([area_det]+dets, motorx, posxlist, motory, posylist, md=_md)
     plan = bpp.subs_wrapper(plan, LiveTable([motorx, motory]+det))
     plan = bpp.plan_mutator(plan, inner_shutter_control)
     yield from plan
 
-def take_one_dark(sample, det, exp_time):
+def take_one_dark(sample, dets, exp_time):
     """ take one data with dark image, then set dark window to 1000 minutes
 
     parameter:
     sample (int): sample name(index) in sample list
-    det (list): list of detectors
+    dets (list): list of detectors
     exp_time (float): exposure time in seconds
 
     """
     glbl['dk_window'] = 0.1
-    plan = ct_motors_plan(det, exp_time)
+    plan = ct_motors_plan(dets, exp_time)
     xrun(sample, plan)
     glbl['dk_window'] = 1000
 # ------------------------------------------------------------------------------------------------------------------------
