@@ -50,7 +50,9 @@ def xpd_mscan(sample_list, pos_list, exp_time, num=1, delay_num=0, delay=0, smpl
         sample_list: list of sample IDs in the sample holder
         pos_list: list of sample positions, sample_list and pos_list should be match
         motor: motor name which moves sample holder, default is sample_x
-        scanplan: scanplan ID
+        exp_time : total exposure time for each sample, in seconds
+        num: number of data at each time
+        delay_num : sleep time in between each data if multiple data are taken at each time
         delay: delay time in between each sample
         smpl_h: list of samples which needs special filter set
         flt_h: filter set for smpl_h
@@ -124,7 +126,9 @@ def xpd_m2dscan(sample_list, posx_list, posy_list, exp_time, num=1, delay_num=0,
         sample_list (list): list of all samples in the sample holder
         posx_lis, posy_list: list of sample x and y positions, sample_list, posx_list, posy_list should be match
         motorx, motory: motors which moves sample holder, default is sample_x and sample_y
-        scanplan: scanplan index
+        exp_time : total exposure time for each sample, in seconds
+        num: number of data at each time
+        delay_num : sleep time in between each data if multiple data are taken at each time
         delay: delay time in between each sample
         smpl_h: list of samples which needs special filter set flt_h
         flt_h: filter set for samples in smpl_h
@@ -171,7 +175,7 @@ def xpd_m2dscan(sample_list, posx_list, posy_list, exp_time, num=1, delay_num=0,
 
         return None
 
-def xpd_battery(smpl_list, posx_list, scanplan, cycle=1, delay=0, motor=sample_x):
+def xpd_battery(smpl_list, posx_list, exp_time, num=1, delay_num=0, cycle=1, delay=0, motor=sample_x, dets=None):
     """ multi-battery cycling scan plan, all samples at same y position
 
     Example:
@@ -183,7 +187,9 @@ def xpd_battery(smpl_list, posx_list, scanplan, cycle=1, delay=0, motor=sample_x
     parameters:
         smpl_list (list): List of sample IDs that need to be scanned.
         posx_list (list): List of x positions corresponding to each sample in `smpl_list`.
-        scanplan (str): The scan plan to be executed for each sample.
+        exp_time : total exposure time for each sample, in seconds
+        num: number of data at each time
+        delay_num : sleep time in between each data if multiple data are taken at each time
         cycle (int, optional): The number of times to cycle through the samples. Default is 1.
         delay (int or float, optional): Time delay (in seconds) between moving each sample and running the scan.
             Default is 0 (no delay).
@@ -198,18 +204,27 @@ def xpd_battery(smpl_list, posx_list, scanplan, cycle=1, delay=0, motor=sample_x
     length = len(smpl_list)
     print('Total sample numbers:', length)
 
+    if dets is None:
+        dets = []
+    
+    area_det = xpd_configuration['area_det']
+    det = [area_det] + dets
+    if delay_num !=0:
+        delay_num1 = delay_num + exp_time
+
     for i in range(cycle):
 
         for smpl, posx in zip(smpl_list, posx_list):
             print(f'Cycle {i+1}, moving sample {smpl} to position {posx}')
             motor.move(posx)
             time.sleep(delay)
-            xrun(smpl, scanplan)
-
+            plan = ct_motors_plan(det, exp_time, num=num, delay=delay_num1)
+            xrun(smpl, plan) 
+    
     return None
 
 
-def xpd_batteryxy(smpl_list, posx_list, posy_list, scanplan, cycle=1, delay=0, motorx=sample_x, motory=sample_y):
+def xpd_batteryxy(smpl_list, posx_list, posy_list, exp_time, num=1, delay_num=0, cycle=1, delay=0, motorx=sample_x, motory=sample_y, dets=None):
     """ battery cycling experiment for multiple cells, each at different x and y positions
 
      Example:
@@ -224,7 +239,9 @@ def xpd_batteryxy(smpl_list, posx_list, posy_list, scanplan, cycle=1, delay=0, m
         smpl_list (list): List of sample IDs that need to be scanned.
         posx_list (list): List of x positions corresponding to each sample in `smpl_list`.
         posy_list (list): List of y positions corresponding to each sample in `smpl_list`.
-        scanplan (int): The scan plan to be executed for each sample.
+        exp_time : total exposure time for each sample, in seconds
+        num: number of data at each time
+        delay_num : sleep time in between each data if multiple data are taken at each time
         cycle (int, optional): The number of times to cycle through the samples. Default is 1.
         delay (int or float, optional): Time delay (in seconds) between moving each sample and running the scan.
             Default is 0 (no delay).
@@ -236,7 +253,15 @@ def xpd_batteryxy(smpl_list, posx_list, posy_list, scanplan, cycle=1, delay=0, m
     # Input validation
     if len(smplist) != len(posx_list) or len(posx_list) != len(posy_list):
         raise ValueError("smpl_list, posx_list, and posy_list must have the same length")
+
+    if dets is None:
+        dets = []
     
+    area_det = xpd_configuration['area_det']
+    det = [area_det] + dets
+    if delay_num !=0:
+        delay_num1 = delay_num + exp_time
+
     length = len(smpl_list)
     print(f'Total sample numbers: {length}')
 
@@ -248,7 +273,8 @@ def xpd_batteryxy(smpl_list, posx_list, posy_list, scanplan, cycle=1, delay=0, m
             motorx.move(posx)
             motory.move(posy)
             time.sleep(delay)
-            xrun(smpl, scanplan)
+            plan = ct_motors_plan(det, exp_time, num=num, delay=delay_num1)
+            xrun(smpl, plan) 
 
 
 
