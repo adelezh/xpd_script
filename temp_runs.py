@@ -1,7 +1,7 @@
 import time
 
 
-def xpd_temp_list(smpl, Temp_list, exp_time, delay=1, num=1, delay_num=0, dets=None, takeonedark=False):
+def xpd_temp_list(smpl, Temp_list, exp_time, delay=1, num=1, delay_num=0, dets=[ion_chamber], takeonedark=False, cooltoRT=False, RT=30):
     """
     example
         xpd_temp_list(1, [300, 350, 400], 5, delay=1, num=1, delay_num=0, dets=[euroterhm.power])
@@ -15,7 +15,9 @@ def xpd_temp_list(smpl, Temp_list, exp_time, delay=1, num=1, delay_num=0, dets=N
         delay: sleep time after each temperature changes, for temperature controller to stable
         num: number of data at each temperature
         delay_num : sleep time in between each data if multiple data are taken at each temperature
-        dets: list of motors, temperatures controllers, which will be recorded in table.
+        dets: list of motors, temperatures controllers, which will be recorded in table
+        takeonedark (bool): Whether to take a dark measurement first.
+        cooltoRT (bool): Whether to cool to room temperature (30C) after finished measurements, and take one data at room temperature.        
 
     """
 
@@ -42,10 +44,15 @@ def xpd_temp_list(smpl, Temp_list, exp_time, delay=1, num=1, delay_num=0, dets=N
         xrun(smpl, plan)
     endtime = time.time()
     save_tb_xlsx(smpl, starttime, endtime)
+
+    if cooltoRT is True:
+        T_controller.move(RT)
+        plan = ct_motors_plan(det, exp_time, num=1)
+        xrun(smpl, plan)
     return None
 
 
-def xpd_temp_ramp(smpl, Tstart, Tstop, Tstep, exp_time, delay=1, num=1, delay_num=0, dets=None, takeonedark=False):
+def xpd_temp_ramp(smpl, Tstart, Tstop, Tstep, exp_time, delay=1, num=1, delay_num=0, dets=[ion_chamber], takeonedark=False, cooltoRT=False, RT=30):
     """
     example:
         xpd_temp_ramp(1, 300, 400, 10, 5, delay=1, num=1, delay_num=0, dets=[euroterhm.power])
@@ -60,6 +67,8 @@ def xpd_temp_ramp(smpl, Tstart, Tstop, Tstep, exp_time, delay=1, num=1, delay_nu
         num: number of data at each temperature
         delay_num : sleep time in between each data if multiple data are taken at each temperature
         dets: list of motors, temperatures controllers, which will be recorded in table.
+        takeonedark (bool): Whether to take a dark measurement first.
+        cooltoRT (bool): Whether to cool to room temperature (30C) after finished measurements, and take one data at room temperature. 
     """
 
     if dets is None:
@@ -85,11 +94,17 @@ def xpd_temp_ramp(smpl, Tstart, Tstop, Tstep, exp_time, delay=1, num=1, delay_nu
         xrun(smpl, plan)
     endtime = time.time()
     save_tb_xlsx(smpl, starttime, endtime)
+
+    if cooltoRT is True:
+        T_controller.move(RT)
+        plan = ct_motors_plan(det, exp_time, num=1)
+        xrun(smpl, plan)
+    
     return None
 
 
 def temp_hold(smpl, Temp_list, holdtime_list, exp_time, delay=1, delay_hold=0,
-              dets=None, takeonedark=False, cooltoRT=False):
+              dets=[ion_chamber], takeonedark=False, cooltoRT=False, RT=30):
     """
     Controls the temperature change and data collection for a sample experiment.
 
@@ -102,8 +117,7 @@ def temp_hold(smpl, Temp_list, holdtime_list, exp_time, delay=1, delay_hold=0,
         delay_hold (float): Additional delay between measurements.
         dets (list): Optional list of detectors/motors to record.
         takeonedark (bool): Whether to take a dark measurement first.
-        cooltoRT (bool): Whether to cool to room temperature (30C) after finished measurements, 
-            then take one data at room temperature.
+        cooltoRT (bool): Whether to cool to room temperature (30C) after finished measurements, then take one data at room temperature.
 
     """
 
@@ -142,12 +156,12 @@ def temp_hold(smpl, Temp_list, holdtime_list, exp_time, delay=1, delay_hold=0,
     save_tb_xlsx(smpl, starttime, endtime)
     
     if cooltoRT is True:
-        T_controller.move(30)
+        T_controller.move(RT)
         plan = ct_motors_plan(det, exp_time, num=1)
         xrun(smpl, plan)
         
 
-def xpd_temp_setrun(smpl, temp, exp_time, delay=1, hold_time=1, dets=None, cooltoRT=False, takeonedark=Flase):
+def xpd_temp_setrun(smpl, temp, exp_time, delay=1, hold_time=1, dets=[ion_chamber], cooltoRT=False, RT=30, takeonedark=False):
     """
     example:
         xpd_temp_setrun(1, 500, 5, delay=1, hold_time=1, dets=[euroterhm.power])
@@ -161,6 +175,9 @@ def xpd_temp_setrun(smpl, temp, exp_time, delay=1, hold_time=1, dets=None, coolt
         delay: sleep time between each data
         hold_time: hold time to maintain the targe temperature, continuously taking data during the hold time.
         dets: list of motors, temperatures controllers, which will be recorded in table.
+        takeonedark (bool): Whether to take a dark measurement first.
+        cooltoRT (bool): Whether to cool to room temperature (30C) after finished measurements, and take one data at room temperature. 
+
     """
     if dets is None:
         dets = []
@@ -187,18 +204,16 @@ def xpd_temp_setrun(smpl, temp, exp_time, delay=1, hold_time=1, dets=None, coolt
     save_tb_xlsx(smpl, starttime, endtime)
     
     if cooltoRT is True:
-        RT=30
-        T_controller.set(RT)
+        T_controller.move(RT)
         print('set temperature to RT, please wait for cool down')
-        while abs(T_controller.get() - RT) <= 1:
-            plan = ct_motors_plan(det, exp_time)
-            xrun(smpl, plan)
-            time.sleep(delay)
+        plan = ct_motors_plan(det, exp_time)
+        xrun(smpl, plan)
+        time.sleep(delay)
     return None
 
 
 def xpd_mtemp_ramp(sample_list, pos_list, Tstart, Tstop, Tstep, exp_time, delay=1, num=1, delay_num=0, smpl_h=None,
-                   flt_h=None, flt_l=None, motor=sample_x, dets=None, takeonedark=False):
+                   flt_h=None, flt_l=None, motor=sample_x, dets=[ion_chamber], takeonedark=False, cooltoRT=False, RT=30 ):
     """
     example
         xpd_mtemp_ramp([1,2,3],[10, 20, 30],  300, 400, 10, 5, delay=1, num=1, delay_num=0, smpl_h=[1],
@@ -240,7 +255,7 @@ def xpd_mtemp_ramp(sample_list, pos_list, Tstart, Tstop, Tstep, exp_time, delay=
                     xpd_flt_set(flt_l)
             time.sleep(1)
             xpd_temp_ramp(sample, Tstart, Tstop, Tstep, exp_time, delay=delay, num=num, 
-                          delay_num=delay_num, dets=dets,takeonedark=takeonedark)
+                          delay_num=delay_num, dets=dets,takeonedark=takeonedark, cooltoRT=cooltoRT, RT=RT)
 
     else:
         print('sample list and pos_list Must have same length!')
@@ -248,7 +263,7 @@ def xpd_mtemp_ramp(sample_list, pos_list, Tstart, Tstop, Tstep, exp_time, delay=
 
 
 def xpd_mtemp_list(sample_list, pos_list, templist, exp_time, delay=1, num=1, delay_num=0, smpl_h=[],
-                   flt_h=None, flt_l=None, motor=sample_x, dets=[], takeonedark=False):
+                   flt_h=None, flt_l=None, motor=sample_x, dets=[[ion_chamber]], takeonedark=False, cooltoRT=False, RT=30):
     """
     example
         xpd_mtemp_list([1,2,3],[10, 20, 30],  [300, 350, 400], 5, delay=1, num=1, delay_num=0, smpl_h=[1],
@@ -273,7 +288,8 @@ def xpd_mtemp_list(sample_list, pos_list, templist, exp_time, delay=1, num=1, de
     
     
     """
-
+    if dets is None:
+        dets = []
     length = len(sample_list)
     print('Total sample numbers:', length)
 
@@ -288,7 +304,7 @@ def xpd_mtemp_list(sample_list, pos_list, templist, exp_time, delay=1, num=1, de
                     xpd_flt_set(flt_l)
             time.sleep(1)
             xpd_temp_list(sample, templist, exp_time, delay=delay, num=num, 
-                          delay_num=delay_num, dets=dets, takeonedark=takeonedark)
+                          delay_num=delay_num, dets=dets, takeonedark=takeonedark, cooltoRT=cooltoRT, RT=RT)
 
     else:
         print('sample list and pos_list Must have same length!')

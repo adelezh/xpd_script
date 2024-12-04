@@ -1,9 +1,12 @@
 import time
+def auto_calib_true():
+    glbl["auto_load_calib"] = True
 
 
+@bpp.finalize_decorator(auto_calib_true)
 def mscan_2det(smplist_pdf, smplist_xrd, posxlist, exp_pdf, exp_xrd, smpl_h=None, delay=1,
                pdf_pos=[0, 255], xrd_pos=[400, 275], num_pdf=1, num_xrd=1, pdf_flt_h=None, pdf_flt=None, xrd_flt=None,
-               motorx=sample_x, pdf_frame_acq=None, xrd_frame_acq=None, dets=[pe1_z, sample_x], confirm=True):
+               motorx=sample_x, pdf_frame_acq=None, xrd_frame_acq=None, dets=[pe1_z, sample_x, ion_chamber], confirm=True):
     '''
     Multiple samples, do pdf and xrd for one sample, then move to the next sample
     Parameters:
@@ -79,9 +82,10 @@ def mscan_2det(smplist_pdf, smplist_xrd, posxlist, exp_pdf, exp_xrd, smpl_h=None
             confirm=False
         )
 
+@bpp.finalize_decorator(auto_calib_true)
 def mrun_2det_batch(smplist_pdf, smplist_xrd, posxlist, exp_pdf, exp_xrd, smpl_h=[], delay=1,
                  pdf_pos=[0, 240], xrd_pos=[400, 270], num_pdf=1, num_xrd=1, pdf_flt_h=None, pdf_flt=None, xrd_flt=None,
-                 motorx=sample_x, pdf_frame_acq=None, xrd_frame_acq=None, dets=[pe1_z, sample_x], confirm=True):
+                 motorx=sample_x, pdf_frame_acq=None, xrd_frame_acq=None, dets=[pe1_z, sample_x, ion_chamber], confirm=True):
     '''
     Multiple samples, do pdf measurment for all sample first, then do xrd measuremnt
 
@@ -182,13 +186,14 @@ def mrun_2det_batch(smplist_pdf, smplist_xrd, posxlist, exp_pdf, exp_xrd, smpl_h
         plan = plan_with_calib([pe2c] + dets, exp_xrd, num_xrd, xrd_calib)
         xrun(smpl_xrd, plan)
 
-    glbl["auto_load_calib"] = current_calib_status
+    glbl["auto_load_calib"] = True
 
 
+@bpp.finalize_decorator(auto_calib_true)
 def mrun_2det_xypos_batch(smplist_pdf, smplist_xrd, posxlist_pdf, posylist_pdf, posxlist_xrd, posylist_xrd,  exp_pdf, exp_xrd,
                     delay=1, smpl_h=None, pdf_pos=[0, 255], xrd_pos=[400, 275], num_pdf=1, num_xrd=1, pdf_flt_h=None,
                     pdf_flt=None, xrd_flt=None, motorx=sample_x, motory=sample_y, pdf_frame_acq=None, xrd_frame_acq=None,
-                    dets=None, confirm=True):
+                    dets=[ion_chamber], confirm=True):
     '''
 
     Perform XRD measurements for all samples first, followed by PDF measurements.
@@ -301,9 +306,9 @@ def mrun_2det_xypos_batch(smplist_pdf, smplist_xrd, posxlist_pdf, posylist_pdf, 
 
     glbl["auto_load_calib"] = True
 
-
+@bpp.finalize_decorator(auto_calib_true)
 def run_2det(smpl_pdf, smpl_xrd, exp_pdf, exp_xrd, pdf_pos=[0, 255], xrd_pos=[400, 275], num_pdf=1, num_xrd=1,
-             pdf_flt=None, xrd_flt=None, pdf_frame_acq=None, xrd_frame_acq=None, dets=None, confirm=True):
+             pdf_flt=None, xrd_flt=None, pdf_frame_acq=None, xrd_frame_acq=None, dets=[ion_chamber], confirm=True):
     '''
       Perform PDF and XRD measurements for one sample using two detectors.
 
@@ -418,7 +423,11 @@ def set_xrd(xrd_pos=[400, 280], frame_acq_time=0.2, confirm=True):
     pe1_x.move(xrd_pe1x)
 
     xpd_configuration['area_det'] = pe2c
-    glbl['frame_acq_time'] = frame_acq_time
+
+    if glbl['frame_acq_time'] != frame_acq_time:
+        glbl['frame_acq_time'] = frame_acq_time
+        time.sleep(3)    
+
 
 def set_pdf(pdf_pos=[0, 255], safe_out=280, frame_acq_time=0.2, confirm=True):
 
@@ -451,11 +460,14 @@ def set_pdf(pdf_pos=[0, 255], safe_out=280, frame_acq_time=0.2, confirm=True):
     pe1_x.move(pdf_pe1x)
     pe1_z.move(pdf_pe1z)
     xpd_configuration['area_det'] = pe1c
-    glbl['frame_acq_time'] = frame_acq_time
 
+    if glbl['frame_acq_time'] != frame_acq_time:
+        glbl['frame_acq_time'] = frame_acq_time
+        time.sleep(3)  
 
+@bpp.finalize_decorator(auto_calib_true)
 def run_xrd(smpl, exp_xrd, num=1, xrd_pos=[400, 280], calib_file='config_base/xrd.poni',
-            frame_acq_time=0.2, dets=None, confirm=True):
+            frame_acq_time=0.2, dets=[ion_chamber], confirm=True):
     ''' Run one XRD measurement with specified calib_file,
         setup xrd configuration first if was not in xrd configuration yet.
 
@@ -506,9 +518,9 @@ def run_xrd(smpl, exp_xrd, num=1, xrd_pos=[400, 280], calib_file='config_base/xr
     # Re-enable automatic calibration loading
     glbl["auto_load_calib"] = True
 
-
+@bpp.finalize_decorator(auto_calib_true)
 def run_pdf(smpl, exp_pdf, num=1, pdf_pos=[0, 255], safe_out=280, calib_file='config_base/pdf.poni',
-            frame_acq_time=0.2, dets=[pe1_z], confirm=True):
+            frame_acq_time=0.2, dets=[pe1_z, ion_chamber], confirm=True):
 
     ''' Run one PDF measurement, moving the PE1 detector to the specified position
         and configuring the system for PDF measurements.
@@ -562,8 +574,14 @@ def plan_with_calib(dets, exp_time, num, calib_file, delay=1):
     '''
 
     '''
+    (num_frame, acq_time, computed_exposure) = yield from _configure_area_det(exp_time)
+
+    if ion_chamber in dets:
+        if ion_chamber.period.get()!= acq_time:
+            yield from bps.mv(ion_chamber.period, acq_time)
+        ion_chamber.trigs_to_average = num_frame 
+    
     motors = dets[1:]
-    yield from _configure_area_det(exp_time)
     plan = count_with_calib(dets, num, delay=delay, calibration_md=calib_file)
     plan = bpp.subs_wrapper(plan, LiveTable(motors))
     yield from plan

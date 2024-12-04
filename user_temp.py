@@ -57,17 +57,10 @@ def move_to_position(motorx, posx, motory, posy):
 
     Parameters
     ----------
-    motorx : motor
-        The motor controlling the X position.
-
-    posx : float
-        The desired X position.
-
-    motory : motor
-        The motor controlling the Y position.
-
-    posy : float
-        The desired Y position.
+    motorx(motor): The motor controlling the X position.
+    posx(float): The desired X position.
+    motory(motor): The motor controlling the Y position.
+    posy(float): The desired Y position.
 
     Returns
     -------

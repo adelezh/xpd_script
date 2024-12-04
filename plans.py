@@ -1,3 +1,14 @@
+def ion_chamber_in(x=60, y=35):
+    " move ion chamber in to the beam"
+    #TODO find out the x and y positon when ion chamber in and out of the beam
+    ecal_x.move(x)
+    ecal_y.move(y)
+
+def ion_chamber_out(x=-6, y=35):
+    """ move ion chamber out to let laser in"""
+    ecal_x.move(x)
+    ecal_y.move(y)
+
 def plan_with_calib(dets, exp_time, num, calib_file):
     """ plan for a scan with detectors and apply calibration from a file.
 
@@ -10,18 +21,17 @@ def plan_with_calib(dets, exp_time, num, calib_file):
     Example:
         plan_with_calib([pec1, det2], 5.0, 10, calib_file='xrd.poni')
     """
-
+    # Configure the area detector
     (num_frame, acq_time, computed_exposure) = yield from _configure_area_det(exp_time)
 
     if ion_chamber in dets:
+        #yield from bps.mv(ecal_x, 60, ecal_y, -6)
         if ion_chamber.period.get()!= acq_time:
             yield from bps.mv(ion_chamber.period, acq_time)
         ion_chamber.trigs_to_average = num_frame 
     
 
     motors = dets[1:]
-    # Configure the area detector
-    yield from _configure_area_det(exp_time)
     plan = count_with_calib(dets, num, calibration_md=calib_file)
     plan = bpp.subs_wrapper(plan, LiveTable(motors))
     yield from plan

@@ -27,7 +27,7 @@ from os import chmod
 from pandas.core.common import flatten
 
 
-def xpd_mscan(sample_list, pos_list, exp_time, num=1, delay_num=0, delay=0, smpl_h=None, flt_h=None, flt_l=None, motor=sample_x, dets=None):
+def xpd_mscan(sample_list, pos_list, exp_time, num=1, delay_num=0, delay=0, smpl_h=None, flt_h=None, flt_l=None, motor=sample_x, dets=[ion_chamber]):
     """ multi-sample scan
 
     Perform a multi-sample scan by moving samples to specified positions, applying filters, and executing a scan plan.
@@ -105,7 +105,7 @@ def xpd_mscan(sample_list, pos_list, exp_time, num=1, delay_num=0, delay=0, smpl
 
 
 def xpd_m2dscan(sample_list, posx_list, posy_list, exp_time, num=1, delay_num=0, delay=0, smpl_h=None, flt_h=None, flt_l=None,
-                motorx=sample_x, motory=sample_y, dets=None):
+                motorx=sample_x, motory=sample_y, dets=[ion_chamber]):
     """ Perform multi-sample scans by moving samples to predefined x and y positions, applying filters,
     and executing a scan plan.
 
@@ -175,7 +175,7 @@ def xpd_m2dscan(sample_list, posx_list, posy_list, exp_time, num=1, delay_num=0,
 
         return None
 
-def xpd_battery(smpl_list, posx_list, exp_time, num=1, delay_num=0, cycle=1, delay=0, motor=sample_x, dets=None):
+def xpd_battery(smpl_list, posx_list, exp_time, num=1, delay_num=0, cycle=1, delay=0, motor=sample_x, dets=[ion_chamber]):
     """ multi-battery cycling scan plan, all samples at same y position
 
     Example:
@@ -224,7 +224,7 @@ def xpd_battery(smpl_list, posx_list, exp_time, num=1, delay_num=0, cycle=1, del
     return None
 
 
-def xpd_batteryxy(smpl_list, posx_list, posy_list, exp_time, num=1, delay_num=0, cycle=1, delay=0, motorx=sample_x, motory=sample_y, dets=None):
+def xpd_batteryxy(smpl_list, posx_list, posy_list, exp_time, num=1, delay_num=0, cycle=1, delay=0, motorx=sample_x, motory=sample_y, dets=[ion_chamber]):
     """ battery cycling experiment for multiple cells, each at different x and y positions
 
      Example:
@@ -278,7 +278,7 @@ def xpd_batteryxy(smpl_list, posx_list, posy_list, exp_time, num=1, delay_num=0,
 
 
 
-def linescan(smpl, exp_time, xstart, xend, xpoints, motor=sample_y, md=None, dets=None):
+def linescan(smpl, exp_time, xstart, xend, xpoints, motor=sample_y, md=None, dets=[ion_chamber]):
 
     """  line scan by moving a motor between `xstart` and `xend` in `xpoints` steps and recording measurements.
 
@@ -306,7 +306,7 @@ def linescan(smpl, exp_time, xstart, xend, xpoints, motor=sample_y, md=None, det
 
 
 def mlinescan(smplist, poslist, exp_time, lstart, lend, lpoints, pos_motor=sample_x, lmotor=sample_y,
-              smpl_h=None, flt_l=None, flt_h=None, dets=None, md=None):
+              smpl_h=None, flt_l=None, flt_h=None, dets=[ion_chamber], md=None):
     """ Perform line scans for multiple samples. For each sample, the function moves the sample to a specified position
      and measures multiple points along a line using a motor.
 
@@ -367,7 +367,7 @@ def mlinescan(smplist, poslist, exp_time, lstart, lend, lpoints, pos_motor=sampl
 
 
 def gridscan(smpl, exp_time, xstart, xstop, xpoints, ystart, ystop, ypoints,
-             motorx=sample_x, motory=sample_y, md=None, dets=None):
+             motorx=sample_x, motory=sample_y, md=None, dets=[ion_chamber]):
     """
         Perform a grid scan by moving a sample across a grid of x and y points.
 
@@ -401,7 +401,7 @@ def gridscan(smpl, exp_time, xstart, xstop, xpoints, ystart, ystop, ypoints,
 
 
 def mgridscan(smplist, exp_time, xcenter_list, xrange, xpoints, ycenter_list, yrange, ypoints, delay=1,
-              motorx=sample_x, motory=sample_y, smpl_h=None, flt_l=None, flt_h=None, md=None, dets=None):
+              motorx=sample_x, motory=sample_y, smpl_h=None, flt_l=None, flt_h=None, md=None, dets=[ion_chamber]):
 
     """ Perform grid scan for multiple samples.
 
@@ -481,7 +481,7 @@ def mgridscan(smplist, exp_time, xcenter_list, xrange, xpoints, ycenter_list, yr
         xrun(smpl, plan)
 
 
-def xyposscan(smpl, exp_time, posxlist, posylist, motorx=sample_x, motory=sample_y, md=None, dets=None):
+def xyposscan(smpl, exp_time, posxlist, posylist, motorx=sample_x, motory=sample_y, md=None, dets=[ion_chamber]):
 
     """ Perform a multiple points scan for one sample by moving to predefined x and y positions.
 
