@@ -6,6 +6,7 @@ def ion_chamber_in(x=60, y=35):
 
 def ion_chamber_out(x=-6, y=35):
     """ move ion chamber out to let laser in"""
+    #TODO find out the x and y positon when ion chamber in and out of the beam
     ecal_x.move(x)
     ecal_y.move(y)
 
@@ -283,7 +284,6 @@ def take_one_dark(sample, dets, exp_time):
     glbl['dk_window'] = 1000
 # ------------------------------------------------------------------------------------------------------------------------
 from packaging import version
-
 
 def append_compatible(df, new_data, sort=False):
     """

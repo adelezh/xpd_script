@@ -241,7 +241,7 @@ def mrun_2det_xypos_batch(smplist_pdf, smplist_xrd, posxlist_pdf, posylist_pdf, 
         smpl_h = []
     if dets is None:
         dets = []
-    dets = dets + [pe1_Z, motorx, motory]
+    dets = dets + [pe1_z, motorx, motory]
     
     # Ask the user to double-check the pdf_pos and xrd_pos values
     if confirm is True:
