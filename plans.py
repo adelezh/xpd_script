@@ -10,7 +10,7 @@ def ion_chamber_out(x=-6, y=35):
     ecal_x.move(x)
     ecal_y.move(y)
 
-def plan_with_calib(dets, exp_time, num, calib_file):
+def plan_with_calib(dets, exp_time, num, calib_file, md=None):
     """ plan for a scan with detectors and apply calibration from a file.
 
     Args:
@@ -25,6 +25,17 @@ def plan_with_calib(dets, exp_time, num, calib_file):
     # Configure the area detector
     (num_frame, acq_time, computed_exposure) = yield from _configure_area_det(exp_time)
 
+    # Metadata handling
+    _md = {
+
+        "sp_time_per_frame": acq_time,
+        "sp_num_frames": num_frame,
+        "sp_requested_exposure": exp_time,
+        "sp_computed_exposure": computed_exposure,
+    }
+
+    _md.update(md or {})
+
     if ion_chamber in dets:
         #yield from bps.mv(ecal_x, 60, ecal_y, -6)
         if ion_chamber.period.get()!= acq_time:
@@ -33,7 +44,7 @@ def plan_with_calib(dets, exp_time, num, calib_file):
     
 
     motors = dets[1:]
-    plan = count_with_calib(dets, num, calibration_md=calib_file)
+    plan = count_with_calib(dets, num, calibration_md=calib_file, md=_md)
     plan = bpp.subs_wrapper(plan, LiveTable(motors))
     yield from plan
 
@@ -265,11 +276,11 @@ def xyposplan(exp_time, posxlist, posylist, motorx=sample_x, motory=sample_y, md
         ion_chamber.trigs_to_average = num_frame 
 
     plan = bp.list_scan([area_det]+dets, motorx, posxlist, motory, posylist, md=_md)
-    plan = bpp.subs_wrapper(plan, LiveTable([motorx, motory]+det))
+    plan = bpp.subs_wrapper(plan, LiveTable([motorx, motory]+dets))
     plan = bpp.plan_mutator(plan, inner_shutter_control)
     yield from plan
 
-def take_one_dark(sample, dets, exp_time):
+def take_one_dark(sample, exp_time, dets=[ion_chamber] ):
     """ take one data with dark image, then set dark window to 1000 minutes
 
     parameter:
@@ -278,10 +289,14 @@ def take_one_dark(sample, dets, exp_time):
     exp_time (float): exposure time in seconds
 
     """
+    area_det = xpd_configuration['area_det']
+    dets=[area_det] + dets
+
     glbl['dk_window'] = 0.1
     plan = ct_motors_plan(dets, exp_time)
     xrun(sample, plan)
     glbl['dk_window'] = 1000
+    print("dark window is set to 1000 minutes")
 # ------------------------------------------------------------------------------------------------------------------------
 from packaging import version
 

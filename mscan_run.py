@@ -75,8 +75,8 @@ def xpd_mscan(sample_list, pos_list, exp_time, num=1, delay_num=0, delay=0, smpl
 
     area_det = xpd_configuration['area_det']
     det = [area_det] + dets
-    if delay_num !=0:
-        delay_num1 = delay_num + exp_time
+
+    delay_num1 = delay_num + exp_time
     
     for sample, pos in zip(sample_list, pos_list):
         print(f'Move sample {sample} to position {pos}')
@@ -98,7 +98,7 @@ def xpd_mscan(sample_list, pos_list, exp_time, num=1, delay_num=0, delay=0, smpl
         # Run the scan plan
         print(f'Running scan plan for sample {sample}')
         plan = ct_motors_plan(det, exp_time, num=num, delay=delay_num1)
-        xrun(smpl, plan)
+        xrun(sample, plan)
 
     print('Multi-sample scan complete.')
 
@@ -150,8 +150,8 @@ def xpd_m2dscan(sample_list, posx_list, posy_list, exp_time, num=1, delay_num=0,
     
     area_det = xpd_configuration['area_det']
     det = [area_det] + dets
-    if delay_num !=0:
-        delay_num1 = delay_num + exp_time
+
+    delay_num1 = delay_num + exp_time
 
     length = len(sample_list)
     print('Total sample numbers:', length)
@@ -171,7 +171,7 @@ def xpd_m2dscan(sample_list, posx_list, posy_list, exp_time, num=1, delay_num=0,
         #run the scan plan
         print(f'Running scan plan for sample {sample}')
         plan = ct_motors_plan(det, exp_time, num=num, delay=delay_num1)
-        xrun(smpl, plan)    
+        xrun(sample, plan)    
 
         return None
 
@@ -209,8 +209,8 @@ def xpd_battery(smpl_list, posx_list, exp_time, num=1, delay_num=0, cycle=1, del
     
     area_det = xpd_configuration['area_det']
     det = [area_det] + dets
-    if delay_num !=0:
-        delay_num1 = delay_num + exp_time
+
+    delay_num1 = delay_num + exp_time
 
     for i in range(cycle):
 
@@ -259,8 +259,8 @@ def xpd_batteryxy(smpl_list, posx_list, posy_list, exp_time, num=1, delay_num=0,
     
     area_det = xpd_configuration['area_det']
     det = [area_det] + dets
-    if delay_num !=0:
-        delay_num1 = delay_num + exp_time
+
+    delay_num1 = delay_num + exp_time
 
     length = len(smpl_list)
     print(f'Total sample numbers: {length}')
@@ -353,7 +353,7 @@ def mlinescan(smplist, poslist, exp_time, lstart, lend, lpoints, pos_motor=sampl
         pos_motor.move(pos)
 
         # Apply filters if necessary
-        if sample in smpl_h:
+        if smpl in smpl_h:
             if flt_h is not None:
                 xpd_flt_set(flt_h)
         else:
@@ -477,7 +477,7 @@ def mgridscan(smplist, exp_time, xcenter_list, xrange, xpoints, ycenter_list, yr
 
         # Create the grid scan plan and execute the scan
         plan = gridplan(exp_time, xstart, xstop, xpoints, ystart, ystop, ypoints, motorx=motorx, motory=motory, md=md,
-                        det=dets)
+                        dets=dets)
         xrun(smpl, plan)
 
 

@@ -1,10 +1,7 @@
 import time
-def auto_calib_true():
-    glbl["auto_load_calib"] = True
 
 
-@bpp.finalize_decorator(auto_calib_true)
-def mscan_2det(smplist_pdf, smplist_xrd, posxlist, exp_pdf, exp_xrd, smpl_h=None, delay=1,
+def mrun_2det(smplist_pdf, smplist_xrd, posxlist, exp_pdf, exp_xrd, smpl_h=None, delay=1,
                pdf_pos=[0, 255], xrd_pos=[400, 275], num_pdf=1, num_xrd=1, pdf_flt_h=None, pdf_flt=None, xrd_flt=None,
                motorx=sample_x, pdf_frame_acq=None, xrd_frame_acq=None, dets=[pe1_z, sample_x, ion_chamber], confirm=True):
     '''
@@ -81,8 +78,146 @@ def mscan_2det(smplist_pdf, smplist_xrd, posxlist, exp_pdf, exp_xrd, smpl_h=None
             xrd_frame_acq=xrd_frame_acq,
             confirm=False
         )
+def mrun_2det_general(smplist_pdf, smplist_xrd, posxlist, posylist=None, 
+                      exp_pdf=None, exp_xrd=None, delay=1, 
+                      smpl_h=None, pdf_pos=[0, 255], xrd_pos=[400, 275], 
+                      num_pdf=1, num_xrd=1, pdf_flt_h=None, 
+                      pdf_flt=None, xrd_flt=None, motorx=sample_x, 
+                      motory=sample_y, pdf_frame_acq=None, 
+                      xrd_frame_acq=None, dets=[ion_chamber], 
+                      pdf_only_samples=None, xrd_only_samples=None,
+                      scan_order="pdf_first", confirm=True):
+    '''
+    Generalized function for performing PDF and/or XRD measurements, supporting both 1D and 2D positioning,
+    and handling samples requiring only PDF or only XRD measurements.
 
-@bpp.finalize_decorator(auto_calib_true)
+    Parameters:
+        smplist_pdf: List of sample names for PDF measurement.
+        smplist_xrd: List of sample names for XRD measurement.
+        posxlist: List of X positions for the samples.
+        posylist: Optional list of Y positions for the samples (default: None for 1D positioning).
+        exp_pdf: Exposure time for PDF measurement (default: None if no PDF measurement is required).
+        exp_xrd: Exposure time for XRD measurement (default: None if no XRD measurement is required).
+        delay: Delay time between each measurement (default: 1 second).
+        smpl_h: List of high-scattering samples needing special filters for PDF (optional).
+        pdf_pos, xrd_pos: Positions of PDF and XRD detectors, respectively.
+        num_pdf, num_xrd: Number of data points for PDF and XRD measurements.
+        pdf_flt_h: Filter set for high-scattering PDF samples (default: None).
+        pdf_flt: Filter set for normal PDF samples (default: None).
+        xrd_flt: Filter set for XRD samples (default: None).
+        motorx, motory: Motors to move samples in X and Y directions, respectively.
+        pdf_frame_acq, xrd_frame_acq: Frame acquisition times for PDF and XRD detectors.
+        dets: List of detectors and motors to record in the data table.
+        pdf_only_samples: List of samples requiring PDF measurements only (default: None).
+        xrd_only_samples: List of samples requiring XRD measurements only (default: None).
+        scan_order: Specify the order of scans, either "xrd_first" or "pdf_first" (default: "xrd_first").
+        confirm: Whether to prompt for confirmation of settings (default: True).
+    '''
+    
+    # Validate sample list lengths
+    if len(smplist_pdf) != len(posxlist):
+        raise ValueError("smplist_pdf and posxlist must have the same length")
+    if len(smplist_xrd) != len(posxlist):
+        raise ValueError("smplist_xrd and posxlist must have the same length")
+    if posylist and (len(posxlist) != len(posylist)):
+        raise ValueError("posxlist and posylist must have the same length if posylist is provided")
+
+    # Initialize optional parameters
+    if pdf_only_samples is None:
+        pdf_only_samples = []
+    if xrd_only_samples is None:
+        xrd_only_samples = []
+
+    # Confirm settings
+    if confirm:
+        confirmation = input(
+            f"Confirm detector positions:\n"
+            f"  - PDF Position = {pdf_pos}\n"
+            f"  - XRD Position = {xrd_pos}\n"
+            f"Proceed with these settings? (y/n): ").strip().lower()
+
+        if confirmation not in ['y', 'yes']:
+            print("User chose not to proceed with the measurements.")
+            return
+
+    # Disable automatic calibration loading
+    glbl["auto_load_calib"] = False
+
+    # Load calibration files
+    xrd_calib = load_calibration_md('config_base/xrd.poni')
+    pdf_calib = load_calibration_md('config_base/pdf.poni')
+
+    # Detector positions
+    pdf_pe1x, pdf_pe1z = pdf_pos
+    xrd_pe1x, xrd_pe1z = xrd_pos
+
+    def move_to_position(posx, posy=None):
+        """Helper to move motors to the specified position."""
+        motorx.move(posx)
+        if posy is not None:
+            motory.move(posy)
+
+    def perform_xrd_scan():
+        """Perform XRD measurements."""
+        if not exp_xrd:
+            return
+        print('Starting XRD scan...')
+        xpd_configuration['area_det'] = pe2c
+        if xrd_frame_acq is not None:
+            glbl['frame_acq_time'] = xrd_frame_acq
+            time.sleep(5)
+
+        pe1_z.move(xrd_pe1z)
+        pe1_x.move(xrd_pe1x)
+        if xrd_flt is not None:
+            xpd_flt_set(xrd_flt)
+
+        for smpl, posx, posy in zip(smplist_xrd, posxlist, posylist or [None] * len(posxlist)):
+            if smpl in pdf_only_samples:
+                continue  # Skip PDF-only samples
+            print(f'XRD: sample: {smpl}, position: ({posx}, {posy})')
+            move_to_position(posx, posy)
+            plan = plan_with_calib([pe2c] + dets, exp_xrd, num_xrd, xrd_calib)
+            xrun(smpl, plan)
+
+    def perform_pdf_scan():
+        """Perform PDF measurements."""
+        if not exp_pdf:
+            return
+        print('Starting PDF scan...')
+        xpd_configuration['area_det'] = pe1c
+        if pdf_frame_acq is not None:
+            glbl['frame_acq_time'] = pdf_frame_acq
+            time.sleep(5)
+
+        pe1_z.move(pdf_pe1z)
+        pe1_x.move(pdf_pe1x)
+        for smpl, posx, posy in zip(smplist_pdf, posxlist, posylist or [None] * len(posxlist)):
+            if smpl in xrd_only_samples:
+                continue  # Skip XRD-only samples
+            print(f'PDF: sample: {smpl}, position: ({posx}, {posy})')
+            move_to_position(posx, posy)
+            if smpl in (smpl_h or []):
+                xpd_flt_set(pdf_flt_h)
+            elif pdf_flt is not None:
+                xpd_flt_set(pdf_flt)
+            time.sleep(delay)
+            plan = plan_with_calib([pe1c] + dets, exp_pdf, num_pdf, pdf_calib)
+            xrun(smpl, plan)
+
+    # Execute scans based on the specified order
+    if scan_order == "xrd_first":
+        perform_xrd_scan()
+        perform_pdf_scan()
+    elif scan_order == "pdf_first":
+        perform_pdf_scan()
+        perform_xrd_scan()
+    else:
+        raise ValueError("Invalid scan_order. Use 'xrd_first' or 'pdf_first'.")
+
+    # Reset calibration loading
+    glbl["auto_load_calib"] = True
+
 def mrun_2det_batch(smplist_pdf, smplist_xrd, posxlist, exp_pdf, exp_xrd, smpl_h=[], delay=1,
                  pdf_pos=[0, 240], xrd_pos=[400, 270], num_pdf=1, num_xrd=1, pdf_flt_h=None, pdf_flt=None, xrd_flt=None,
                  motorx=sample_x, pdf_frame_acq=None, xrd_frame_acq=None, dets=[pe1_z, sample_x, ion_chamber], confirm=True):
@@ -108,7 +243,6 @@ def mrun_2det_batch(smplist_pdf, smplist_xrd, posxlist, exp_pdf, exp_xrd, smpl_h
         pdf_frame_acq: Frame acquisition time for PDF detector (default: None).
         xrd_frame_acq: Frame acquisition time for XRD detector (default: None).
         dets: List of detectors and motors to record in the data table.
-
 
     '''
 
@@ -189,7 +323,6 @@ def mrun_2det_batch(smplist_pdf, smplist_xrd, posxlist, exp_pdf, exp_xrd, smpl_h
     glbl["auto_load_calib"] = True
 
 
-@bpp.finalize_decorator(auto_calib_true)
 def mrun_2det_xypos_batch(smplist_pdf, smplist_xrd, posxlist_pdf, posylist_pdf, posxlist_xrd, posylist_xrd,  exp_pdf, exp_xrd,
                     delay=1, smpl_h=None, pdf_pos=[0, 255], xrd_pos=[400, 275], num_pdf=1, num_xrd=1, pdf_flt_h=None,
                     pdf_flt=None, xrd_flt=None, motorx=sample_x, motory=sample_y, pdf_frame_acq=None, xrd_frame_acq=None,
@@ -306,7 +439,6 @@ def mrun_2det_xypos_batch(smplist_pdf, smplist_xrd, posxlist_pdf, posylist_pdf, 
 
     glbl["auto_load_calib"] = True
 
-@bpp.finalize_decorator(auto_calib_true)
 def run_2det(smpl_pdf, smpl_xrd, exp_pdf, exp_xrd, pdf_pos=[0, 255], xrd_pos=[400, 275], num_pdf=1, num_xrd=1,
              pdf_flt=None, xrd_flt=None, pdf_frame_acq=None, xrd_frame_acq=None, dets=[ion_chamber], confirm=True):
     '''
@@ -465,7 +597,7 @@ def set_pdf(pdf_pos=[0, 255], safe_out=280, frame_acq_time=0.2, confirm=True):
         glbl['frame_acq_time'] = frame_acq_time
         time.sleep(3)  
 
-@bpp.finalize_decorator(auto_calib_true)
+
 def run_xrd(smpl, exp_xrd, num=1, xrd_pos=[400, 280], calib_file='config_base/xrd.poni',
             frame_acq_time=0.2, dets=[ion_chamber], confirm=True):
     ''' Run one XRD measurement with specified calib_file,
@@ -518,7 +650,7 @@ def run_xrd(smpl, exp_xrd, num=1, xrd_pos=[400, 280], calib_file='config_base/xr
     # Re-enable automatic calibration loading
     glbl["auto_load_calib"] = True
 
-@bpp.finalize_decorator(auto_calib_true)
+
 def run_pdf(smpl, exp_pdf, num=1, pdf_pos=[0, 255], safe_out=280, calib_file='config_base/pdf.poni',
             frame_acq_time=0.2, dets=[pe1_z, ion_chamber], confirm=True):
 
@@ -569,69 +701,3 @@ def run_pdf(smpl, exp_pdf, num=1, pdf_pos=[0, 255], safe_out=280, calib_file='co
     # Re-enable automatic calibration loading
     glbl["auto_load_calib"] = True
 
-
-def plan_with_calib(dets, exp_time, num, calib_file, delay=1):
-    '''
-
-    '''
-    (num_frame, acq_time, computed_exposure) = yield from _configure_area_det(exp_time)
-
-    if ion_chamber in dets:
-        if ion_chamber.period.get()!= acq_time:
-            yield from bps.mv(ion_chamber.period, acq_time)
-        ion_chamber.trigs_to_average = num_frame 
-    
-    motors = dets[1:]
-    plan = count_with_calib(dets, num, delay=delay, calibration_md=calib_file)
-    plan = bpp.subs_wrapper(plan, LiveTable(motors))
-    yield from plan
-
-
-def count_with_calib(detectors: list, num: int = 1, delay: float = None, *, calibration_md: dict = None,
-                     md: dict = None) -> typing.Generator:
-    """
-    Take one or more readings from detectors with shutter control and calibration metadata injection.
-
-    Parameters
-    ----------
-    detectors : list
-        list of 'readable' objects
-
-    num : integer, optional
-        number of readings to take; default is 1
-
-        If None, capture data until canceled
-
-    delay : iterable or scalar, optional
-        Time delay in seconds between successive readings; default is 0.
-
-    calibration_md :
-        The calibration data in a dictionary. If not applied, the function is a normal `bluesky.plans.count`.
-
-    md : dict, optional
-        metadata
-
-    Notes
-    -----
-    If ``delay`` is an iterable, it must have at least ``num - 1`` entries or
-    the plan will raise a ``ValueError`` during iteration.
-    """
-    if md is None:
-        md = dict()
-    if calibration_md is not None:
-        md["calibration_md"] = calibration_md
-
-    def _per_shot(_detectors):
-        yield from open_shutter_stub()
-        yield from bps.one_shot(_detectors)
-        yield from close_shutter_stub()
-        return
-
-    try:
-        plan = bp.count(detectors, num, delay, md=md, per_shot=_per_shot)
-        sts = yield from plan
-    except Exception as error:
-
-        raise error
-
-    return sts
