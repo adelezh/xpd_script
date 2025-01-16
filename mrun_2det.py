@@ -1,9 +1,9 @@
 import time
 
 
-def mrun_2det(smplist_pdf, smplist_xrd, posxlist, exp_pdf, exp_xrd, smpl_h=None, delay=1,
+def mrun_2det(smplist_pdf, smplist_xrd, posxlist, exp_pdf, exp_xrd, posylist=None, smpl_h=None, delay=1,
                pdf_pos=[0, 255], xrd_pos=[400, 275], num_pdf=1, num_xrd=1, pdf_flt_h=None, pdf_flt=None, xrd_flt=None,
-               motorx=sample_x, pdf_frame_acq=None, xrd_frame_acq=None, dets=[pe1_z, sample_x, ion_chamber], confirm=True):
+               motorx=sample_x, motory=sample_y, pdf_frame_acq=None, xrd_frame_acq=None, dets=[pe1_z, sample_x, ion_chamber], confirm=True):
     '''
     Multiple samples, do pdf and xrd for one sample, then move to the next sample
     Parameters:
@@ -12,6 +12,7 @@ def mrun_2det(smplist_pdf, smplist_xrd, posxlist, exp_pdf, exp_xrd, smpl_h=None,
         posxlist: List of positions of each sample.
         exp_pdf: Total exposure time for PDF measurement (seconds).
         exp_xrd: Total exposure time for XRD measurement (seconds).
+        posylist: Optional list of Y positions for the samples (default: None for 1D positioning).
         smpl_h: List of high-scattering samples needing special filters for PDF (optional).
         delay: Delay time between each sample during PDF measurements (default: 1 second).
         pdf_pos: Position of the PDF detector [pe1_x, pe1_z].
@@ -31,6 +32,9 @@ def mrun_2det(smplist_pdf, smplist_xrd, posxlist, exp_pdf, exp_xrd, smpl_h=None,
     if len(smplist_pdf) != len(smplist_xrd) or len(posxlist) != len(smplist_xrd):
         raise ValueError("smplist_pdf, smplist_xrd, posxlist must have the same length")
 
+    if posylist and (len(posxlist) != len(posylist)):
+        raise ValueError("posxlist and posylist must have the same length if posylist is provided")
+    
     # Validate filter settings if high scattering samples are provided
     if smpl_h is not None and (pdf_flt_h is None or pdf_flt is None):
         raise ValueError("If smpl_h is provided, both pdf_flt_h and pdf_flt must also be provided.")
@@ -54,9 +58,15 @@ def mrun_2det(smplist_pdf, smplist_xrd, posxlist, exp_pdf, exp_xrd, smpl_h=None,
     if smpl_h is None:
         smpl_h = []
 
-    for smpl_xrd, smpl_pdf, posx in zip(smplist_xrd, smplist_pdf, posxlist):
-        print(f' {smpl_xrd}, {smpl_pdf}, in position {posx}')
+    def move_to_position(posx, posy=None):
+        """Helper to move motors to the specified position."""
         motorx.move(posx)
+        if posy is not None:
+            motory.move(posy)
+
+    for smpl_xrd, smpl_pdf, posx, posy in zip(smplist_xrd, smplist_pdf, posxlist, posylist or [None] * len(posxlist)):
+        print(f' {smpl_xrd}, {smpl_pdf}, in position {posx}')
+        move_to_position(posx, posy)
         time.sleep(delay)
         # Determine the appropriate filter set for PDF
         pdf_flt_selected = pdf_flt_h if smpl_pdf in smpl_h else pdf_flt
