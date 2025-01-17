@@ -10,6 +10,22 @@ def ion_chamber_out(x=-6, y=35):
     ecal_x.move(x)
     ecal_y.move(y)
 
+def takeone(sample, exp_time, num=1, delay_num=0, dets=[ion_chamber] ):
+    """ take one data, collect both det and ion_chamber data
+
+    parameter:
+    sample (int): sample name(index) in sample list
+    dets (list): list of detectors, default: [ion_chamber]
+    exp_time (float): exposure time in seconds
+
+    """
+    area_det = xpd_configuration['area_det']
+    dets=[area_det] + dets
+    delay_num = delay_num + exp_time
+    plan = ct_motors_plan(dets, exp_time, num=num, delay=delay_num)
+    xrun(sample, plan)
+
+
 def plan_with_calib(dets, exp_time, num, calib_file, md=None):
     """ plan for a scan with detectors and apply calibration from a file.
 

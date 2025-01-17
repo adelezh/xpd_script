@@ -179,7 +179,7 @@ def mrun_2det_batch(smplist_pdf, smplist_xrd, posxlist, posylist=None,
         if not exp_xrd:
             return
         print('Starting XRD scan...')
-        set_xrd(xrd_pos=xrd_pos, frame_acq_time=xrd_frame_acq, confirm=confirm)
+        set_xrd(xrd_pos=xrd_pos, frame_acq_time=xrd_frame_acq, confirm=False)
         for smpl, posx, posy in zip(smplist_xrd, posxlist, posylist or [None] * len(posxlist)):
             if posx in pdf_only_posx:
                 continue  # Skip PDF-only samples
@@ -288,7 +288,7 @@ def run_2det(smpl_pdf, smpl_xrd, exp_pdf, exp_xrd, pdf_pos=[0, 255], xrd_pos=[40
 
     # XRD Scan
     print('xrd scan')
-    set_xrd(xrd_pos=xrd_pos, frame_acq_time=xrd_frame_acq, confirm=confirm)
+    set_xrd(xrd_pos=xrd_pos, frame_acq_time=xrd_frame_acq, confirm=False)
 
     if xrd_flt is not None:
         xpd_flt_set(xrd_flt)
@@ -332,9 +332,9 @@ def set_xrd(xrd_pos=[400, 280], frame_acq_time=0.2, confirm=True):
 
     xpd_configuration['area_det'] = pe2c
 
-    if glbl['frame_acq_time'] != frame_acq_time:
-        glbl['frame_acq_time'] = frame_acq_time
-        time.sleep(3)    
+    #if glbl['frame_acq_time'] != frame_acq_time:
+    glbl['frame_acq_time'] = frame_acq_time
+    time.sleep(3)    
 
 
 def set_pdf(pdf_pos=[0, 255], safe_out=280, frame_acq_time=0.2, confirm=True):
@@ -373,9 +373,9 @@ def set_pdf(pdf_pos=[0, 255], safe_out=280, frame_acq_time=0.2, confirm=True):
     
     xpd_configuration['area_det'] = pe1c
 
-    if glbl['frame_acq_time'] != frame_acq_time:
-        glbl['frame_acq_time'] = frame_acq_time
-        time.sleep(3)  
+    #if glbl['frame_acq_time'] != frame_acq_time:
+    glbl['frame_acq_time'] = frame_acq_time
+    time.sleep(3)  
 
 
 def run_xrd(smpl, exp_xrd, num=1, xrd_pos=[400, 280], calib_file='config_base/xrd.poni',
@@ -390,7 +390,7 @@ def run_xrd(smpl, exp_xrd, num=1, xrd_pos=[400, 280], calib_file='config_base/xr
         xrd_pos (list, optional): List of PE1 x and z positions. Default is [400, 280].
         calib_file (str, optional): Path to the calibration file for XRD measurement. Default is 'config_base/xrd.poni'.
         frame_acq_time (float, optional): Frame acquisition time. Default is 0.2.
-        dets (list, optional): Extra detectors (e.g., temperature controller, motor positions) to read. Default is None.
+        dets (list, optional): Extra detectors (e.g., temperature controller, motor positions) to read. Default is [ion_chamber].
 
 
     '''
@@ -434,7 +434,7 @@ def run_pdf(smpl, exp_pdf, num=1, pdf_pos=[0, 255], safe_out=280, calib_file='co
         safe_out (float, optional): The safe z position to move PE1 to before adjusting x and z. Default is 280.
         calib_file (str, optional): Path to the calibration file for the PDF measurement. Default is 'config_base/pdf.poni'.
         frame_acq_time (float, optional): Frame acquisition time. Default is 0.2 seconds.
-        dets (list, optional): Extra detectors (e.g., temperature controller, motor positions). Default is [pe1_z].
+        dets (list, optional): Extra detectors (e.g., temperature controller, motor positions). Default is [pe1_z, ion_chamber].
 
     '''
     # set PDF configuration
