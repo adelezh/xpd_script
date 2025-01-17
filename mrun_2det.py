@@ -3,7 +3,7 @@ import time
 
 def mrun_2det(smplist_pdf, smplist_xrd, posxlist, exp_pdf, exp_xrd, posylist=None, smpl_h=None, delay=1,
                pdf_pos=[0, 255], xrd_pos=[400, 275], num_pdf=1, num_xrd=1, pdf_flt_h=None, pdf_flt=None, xrd_flt=None,
-               motorx=sample_x, motory=sample_y, pdf_frame_acq=None, xrd_frame_acq=None, dets=[pe1_z, sample_x, ion_chamber], confirm=True):
+               motorx=sample_x, motory=sample_y, pdf_frame_acq=None, xrd_frame_acq=None, dets=[pe1_z, ion_chamber], confirm=True):
     '''
     Multiple samples, do pdf and xrd for one sample, then move to the next sample
     Parameters:
@@ -58,6 +58,11 @@ def mrun_2det(smplist_pdf, smplist_xrd, posxlist, exp_pdf, exp_xrd, posylist=Non
     if smpl_h is None:
         smpl_h = []
 
+    if posylist is not None:
+        dets = dets + [motorx, motory]
+    else:
+        dets = dets + [motorx]
+
     def move_to_position(posx, posy=None):
         """Helper to move motors to the specified position."""
         motorx.move(posx)
@@ -95,7 +100,7 @@ def mrun_2det_general(smplist_pdf, smplist_xrd, posxlist, posylist=None,
                       pdf_flt=None, xrd_flt=None, motorx=sample_x, 
                       motory=sample_y, pdf_frame_acq=None, 
                       xrd_frame_acq=None, dets=[ion_chamber], 
-                      pdf_only_samples=None, xrd_only_samples=None,
+                      pdf_only_posx=None, xrd_only_posx=None,
                       scan_order="pdf_first", confirm=True):
     '''
     Generalized function for performing PDF and/or XRD measurements, supporting both 1D and 2D positioning,
@@ -133,11 +138,16 @@ def mrun_2det_general(smplist_pdf, smplist_xrd, posxlist, posylist=None,
         raise ValueError("posxlist and posylist must have the same length if posylist is provided")
 
     # Initialize optional parameters
-    if pdf_only_samples is None:
-        pdf_only_samples = []
-    if xrd_only_samples is None:
-        xrd_only_samples = []
+    if pdf_only_posx is None:
+        pdf_only_posx = []
+    if xrd_only_posx is None:
+        xrd_only_posx = []
 
+    if posylist is not None:
+        dets = dets + [motorx, motory]
+    else:
+        dets = dets + [motorx]
+        
     # Confirm settings
     if confirm:
         confirmation = input(
@@ -183,7 +193,7 @@ def mrun_2det_general(smplist_pdf, smplist_xrd, posxlist, posylist=None,
             xpd_flt_set(xrd_flt)
 
         for smpl, posx, posy in zip(smplist_xrd, posxlist, posylist or [None] * len(posxlist)):
-            if smpl in pdf_only_samples:
+            if posx in pdf_only_posx:
                 continue  # Skip PDF-only samples
             print(f'XRD: sample: {smpl}, position: ({posx}, {posy})')
             move_to_position(posx, posy)
@@ -203,7 +213,7 @@ def mrun_2det_general(smplist_pdf, smplist_xrd, posxlist, posylist=None,
         pe1_z.move(pdf_pe1z)
         pe1_x.move(pdf_pe1x)
         for smpl, posx, posy in zip(smplist_pdf, posxlist, posylist or [None] * len(posxlist)):
-            if smpl in xrd_only_samples:
+            if posx in xrd_only_posx:
                 continue  # Skip XRD-only samples
             print(f'PDF: sample: {smpl}, position: ({posx}, {posy})')
             move_to_position(posx, posy)
