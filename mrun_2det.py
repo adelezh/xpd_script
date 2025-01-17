@@ -147,7 +147,7 @@ def mrun_2det_general(smplist_pdf, smplist_xrd, posxlist, posylist=None,
         dets = dets + [motorx, motory]
     else:
         dets = dets + [motorx]
-        
+
     # Confirm settings
     if confirm:
         confirmation = input(
@@ -238,226 +238,6 @@ def mrun_2det_general(smplist_pdf, smplist_xrd, posxlist, posylist=None,
     # Reset calibration loading
     glbl["auto_load_calib"] = True
 
-def mrun_2det_batch(smplist_pdf, smplist_xrd, posxlist, exp_pdf, exp_xrd, smpl_h=[], delay=1,
-                 pdf_pos=[0, 240], xrd_pos=[400, 270], num_pdf=1, num_xrd=1, pdf_flt_h=None, pdf_flt=None, xrd_flt=None,
-                 motorx=sample_x, pdf_frame_acq=None, xrd_frame_acq=None, dets=[pe1_z, sample_x, ion_chamber], confirm=True):
-    '''
-    Multiple samples, do pdf measurment for all sample first, then do xrd measuremnt
-
-    Parameters:
-        smplist_pdf: List of sample names for PDF measurement.
-        smplist_xrd: List of sample names for XRD measurement.
-        posxlist: List of positions of each sample.
-        exp_pdf: Total exposure time for PDF measurement (seconds).
-        exp_xrd: Total exposure time for XRD measurement (seconds).
-        smpl_h: List of high-scattering samples needing special filters for PDF (optional).
-        delay: Delay time between each sample during PDF measurements (default: 1 second).
-        pdf_pos: Position of the PDF detector [pe1_x, pe1_z].
-        xrd_pos: Position of the XRD detector [pe1_x, pe1_z].
-        num_pdf: Number of data points to take for PDF measurements.
-        num_xrd: Number of data points to take for XRD measurements.
-        pdf_flt_h: Filter set for high-scattering PDF samples (default: None).
-        pdf_flt: Filter set for normal PDF samples (default: None).
-        xrd_flt: Filter set for XRD samples (default: None).
-        motorx: Motor to move samples, default is sample_x.
-        pdf_frame_acq: Frame acquisition time for PDF detector (default: None).
-        xrd_frame_acq: Frame acquisition time for XRD detector (default: None).
-        dets: List of detectors and motors to record in the data table.
-
-    '''
-
-    # Validate list lengths for sample list and position list
-    if len(smplist_pdf) != len(smplist_xrd) or len(posxlist) != len(smplist_xrd):
-        raise ValueError("smplist_pdf, smplist_xrd, posxlist must have the same length")
-
-    # Validate filter settings if high scattering samples are provided
-    if smpl_h is not None and (pdf_flt_h is None or pdf_flt is None):
-        raise ValueError("If smpl_h is provided, both pdf_flt_h and pdf_flt must also be provided.")
-
-    # Ensure that if pdf_flt is provided, xrd_flt are provided
-    if pdf_flt is not None and xrd_flt is None:
-        raise ValueError("If pdf_flt is provided, both xrd_flt must also be provided.")
-
-    # Ask the user to confirm detector positions
-    if confirm is True:
-        confirmation = input(
-            f"Confirm detector positions:\n"
-            f"  - PDF Position = {pdf_pos}\n"
-            f"  - XRD Position = {xrd_pos}\n"
-            f"Proceed with these settings? (y/n): ").strip().lower()
-
-        if confirmation not in ['y', 'yes']:
-            print("User chose not to proceed with the measurements.")
-            return  # Exit the function if the user doesn't confirm
-
-    # Disable automatic loading of calibration during batch processing
-    glbl["auto_load_calib"] = False
-
-    # Load calibration files for XRD and PDF
-    xrd_calib = load_calibration_md('config_base/xrd.poni')
-    pdf_calib = load_calibration_md('config_base/pdf.poni')
-
-    pdf_pe1x, pdf_pe1z = pdf_pos
-    xrd_pe1x, xrd_pe1z = xrd_pos
-
-    print('pdf scan')
-
-    # Move to the PDF position with the correct sequence
-    pe1_z.move(xrd_pe1z)
-    pe1_x.move(pdf_pe1x)
-    pe1_z.move(pdf_pe1z)
-
-    xpd_configuration['area_det'] = pe1c
-    if pdf_frame_acq is not None:
-        glbl['frame_acq_time'] = pdf_frame_acq
-        time.sleep(5)
-
-    for smpl_pdf, posx in zip(smplist_pdf, posxlist):
-        print(f' PDF: sample: {smpl_pdf} ,position: {posx}')
-        motorx.move(posx)
-        if smpl_pdf in smpl_h:
-            xpd_flt_set(pdf_flt_h)
-        else:
-            if pdf_flt is not None:
-                xpd_flt_set(pdf_flt)
-        time.sleep(delay)
-        plan = plan_with_calib([pe1c] + dets, exp_pdf, num_pdf, pdf_calib)
-        xrun(smpl_pdf, plan)
-
-    print('xrd scan')
-    xpd_configuration['area_det'] = pe2c
-    if xrd_frame_acq is not None:
-        glbl['frame_acq_time'] = xrd_frame_acq
-        time.sleep(5)
-    pe1_z.move(xrd_pe1z)
-    pe1_x.move(xrd_pe1x)
-    if xrd_flt is not None:
-        xpd_flt_set(xrd_flt)
-    for smpl_xrd, posx in zip(smplist_xrd, posxlist):
-        print(f' PDF: sample: {smpl_xrd} ,position: {posx}')
-        motorx.move(posx)
-        # time.sleep(delay)
-        plan = plan_with_calib([pe2c] + dets, exp_xrd, num_xrd, xrd_calib)
-        xrun(smpl_xrd, plan)
-
-    glbl["auto_load_calib"] = True
-
-
-def mrun_2det_xypos_batch(smplist_pdf, smplist_xrd, posxlist_pdf, posylist_pdf, posxlist_xrd, posylist_xrd,  exp_pdf, exp_xrd,
-                    delay=1, smpl_h=None, pdf_pos=[0, 255], xrd_pos=[400, 275], num_pdf=1, num_xrd=1, pdf_flt_h=None,
-                    pdf_flt=None, xrd_flt=None, motorx=sample_x, motory=sample_y, pdf_frame_acq=None, xrd_frame_acq=None,
-                    dets=[ion_chamber], confirm=True):
-    '''
-
-    Perform XRD measurements for all samples first, followed by PDF measurements.
-    The function handles both X and Y positioning for the samples, and some samples may require only PDF or only XRD.
-
-    Parameters:
-        smplist_pdf, smplist_xrd : List of sample names for PDF, XRD measurement.
-        posxlist_pdf, posylist_pdf: List of x and y positions of each PDF sample.
-        posxlist_xrd, posylist_xrd: List of x and y positions of each xrd sample.
-        exp_pdf: Total exposure time for PDF measurement (seconds).
-        exp_xrd: Total exposure time for XRD measurement (seconds).
-        smpl_h: List of high-scattering samples needing special filters for PDF (optional).
-        delay: Delay time between each sample during PDF measurements (default: 1 second).
-        pdf_pos: Position of the PDF detector [pe1_x, pe1_z].
-        xrd_pos: Position of the XRD detector [pe1_x, pe1_z].
-        num_pdf: Number of data points to take for PDF measurements.
-        num_xrd: Number of data points to take for XRD measurements.
-        pdf_flt_h: Filter set for high-scattering PDF samples (default: None).
-        pdf_flt: Filter set for normal PDF samples (default: None).
-        xrd_flt: Filter set for XRD samples (default: None).
-        motorx: Motor to move samples in x direction, default is sample_x.
-        motory: Motor to move samples in y direction, default is sample_y
-        pdf_frame_acq: Frame acquisition time for PDF detector (default: None).
-        xrd_frame_acq: Frame acquisition time for XRD detector (default: None).
-        dets: List of detectors and motors to record in the data table.
-    '''
-
-    # Validate list lengths for PDF
-    if len(smplist_pdf) != len(posxlist_pdf) or len(posxlist_pdf) != len(posylist_pdf):
-        raise ValueError("smplist_pdf, posxlist_pdf, and posylist_pdf must have the same length")
-
-    # Validate list lengths for XRD
-    if len(smplist_xrd) != len(posxlist_xrd) or len(posylist_xrd) != len(posxlist_xrd):
-        raise ValueError("smplist_xrd, posxlist_xrd, and posylist_xrd must have the same length")
-
-    # Validate filter settings if high scattering samples are provided
-    if smpl_h is not None and (pdf_flt_h is None or pdf_flt is None):
-        raise ValueError("If smpl_h is provided, both pdf_flt_h and pdf_flt must also be provided.")
-
-    # Ensure that if pdf_flt is provided, xrd_flt are provided
-    if pdf_flt is not None and xrd_flt is None:
-        raise ValueError("If pdf_flt is provided, both xrd_flt must also be provided.")
-
-    if smpl_h is None:
-        smpl_h = []
-    if dets is None:
-        dets = []
-    dets = dets + [pe1_z, motorx, motory]
-    
-    # Ask the user to double-check the pdf_pos and xrd_pos values
-    if confirm is True:
-        confirmation = input(
-            f"Confirm detector positions:\n"
-            f"  - PDF Position = {pdf_pos}\n"
-            f"  - XRD Position = {xrd_pos}\n"
-            f"Proceed with these settings? (y/n): ").strip().lower()
-
-        if confirmation not in ['y', 'yes']:
-            print("User chose not to proceed with the measurements.")
-            return  # Exit the function if the user doesn't confirm
-
-    # Disable automatic loading of calibration during batch processing
-    glbl["auto_load_calib"] = False
-
-    # Load calibration files for XRD and PDF
-    xrd_calib = load_calibration_md('config_base/xrd.poni')
-    pdf_calib = load_calibration_md('config_base/pdf.poni')
-
-    pdf_pe1x, pdf_pe1z = pdf_pos
-    xrd_pe1x, xrd_pe1z = xrd_pos
-
-    print('Starting xrd scan')
-    xpd_configuration['area_det'] = pe2c
-    if xrd_frame_acq is not None:
-        glbl['frame_acq_time'] = xrd_frame_acq
-        time.sleep(5)
-    # Move the PE1 detector to XRD position
-    pe1_z.move(xrd_pe1z)
-    pe1_x.move(xrd_pe1x)
-    if xrd_flt is not None:
-        xpd_flt_set(xrd_flt)
-    for smpl_xrd, posx, posy in zip(smplist_xrd, posxlist_xrd, posylist_xrd):
-        print(f' xrd: sample: {smpl_xrd} ,position: {posx}')
-        motorx.move(posx)
-        motory.move(posy)
-        # time.sleep(delay)
-        plan = plan_with_calib([pe2c] + dets, exp_xrd, num_xrd, xrd_calib)
-        xrun(smpl_xrd, plan)
-
-    print('starting pdf scan')
-    xpd_configuration['area_det'] = pe1c
-    if pdf_frame_acq is not None:
-        glbl['frame_acq_time'] = pdf_frame_acq
-        time.sleep(5)
-    pe1_z.move(xrd_pe1z)
-    pe1_x.move(pdf_pe1x)
-    pe1_z.move(pdf_pe1z)
-    for smpl_pdf, posx, posy in zip(smplist_pdf, posxlist_pdf, posylist_pdf):
-        print(f' PDF: sample: {smpl_pdf} ,position: {posx}')
-        motorx.move(posx)
-        motory.move(posy)
-        if smpl_pdf in smpl_h:
-            xpd_flt_set(pdf_flt_h)
-        else:
-            if pdf_flt is not None:
-                xpd_flt_set(pdf_flt)
-        time.sleep(delay)
-        plan = plan_with_calib([pe1c] + dets, exp_pdf, num_pdf, pdf_calib)
-        xrun(smpl_pdf, plan)
-
-    glbl["auto_load_calib"] = True
 
 def run_2det(smpl_pdf, smpl_xrd, exp_pdf, exp_xrd, pdf_pos=[0, 255], xrd_pos=[400, 275], num_pdf=1, num_xrd=1,
              pdf_flt=None, xrd_flt=None, pdf_frame_acq=None, xrd_frame_acq=None, dets=[ion_chamber], confirm=True):
@@ -641,7 +421,7 @@ def run_xrd(smpl, exp_xrd, num=1, xrd_pos=[400, 280], calib_file='config_base/xr
     xrd_pe1x, xrd_pe1z = xrd_pos
 
     if pe1_x.position == xrd_pe1x:
-        print("PE2C detector is already configured, and PE1 is in the correct position.")
+        print("PE1 and PE2 are in the correct position.")
         # already xpd configuration
         xpd_configuration['area_det'] = pe2c
         if glbl['frame_acq_time'] != frame_acq_time:
@@ -721,3 +501,16 @@ def run_pdf(smpl, exp_pdf, num=1, pdf_pos=[0, 255], safe_out=280, calib_file='co
     # Re-enable automatic calibration loading
     glbl["auto_load_calib"] = True
 
+def is_motor_at_position(motor, target_position, tolerance=0.001):
+    """
+    Check if a motor is at the specified target position within a tolerance.
+
+    Parameters:
+        motor: The motor object to check (e.g., `pe1_x`).
+        target_position (float): The target position to compare against.
+        tolerance (float): The allowable deviation from the target position.
+
+    Returns:
+        bool: True if the motor is within the tolerance of the target position, False otherwise.
+    """
+    return abs(motor.position - target_position) <= tolerance
