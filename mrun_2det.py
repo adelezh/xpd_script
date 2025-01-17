@@ -222,7 +222,7 @@ def mrun_2det_batch(smplist_pdf, smplist_xrd, posxlist, posylist=None,
 
 
 def run_2det(smpl_pdf, smpl_xrd, exp_pdf, exp_xrd, pdf_pos=[0, 255], xrd_pos=[400, 275], num_pdf=1, num_xrd=1,
-             pdf_flt=None, xrd_flt=None, pdf_frame_acq=None, xrd_frame_acq=None, dets=[ion_chamber], confirm=True):
+             pdf_flt=None, xrd_flt=None, pdf_frame_acq=0.2, xrd_frame_acq=0.2, dets=[ion_chamber], confirm=True):
     '''
       Perform PDF and XRD measurements for one sample using two detectors.
 
@@ -238,8 +238,8 @@ def run_2det(smpl_pdf, smpl_xrd, exp_pdf, exp_xrd, pdf_pos=[0, 255], xrd_pos=[40
         pdf_flt: Filter set for normal PDF samples (default: None).
         xrd_flt: Filter set for XRD samples (default: None).
         motor: Motor to move samples, default is sample_x.
-        pdf_frame_acq: Frame acquisition time for PDF detector (default: None).
-        xrd_frame_acq: Frame acquisition time for XRD detector (default: None).
+        pdf_frame_acq: Frame acquisition time for PDF detector (default: 0.2).
+        xrd_frame_acq: Frame acquisition time for XRD detector (default: 0.2).
         dets: List of detectors and motors to record in the data table.
 
       Returns:
